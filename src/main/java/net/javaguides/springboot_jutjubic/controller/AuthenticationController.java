@@ -132,8 +132,10 @@ public class AuthenticationController {
         }
 
         User user = this.userService.save(userRequest);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Registration successful. Please check your email for verification.");
 
-        return new ResponseEntity<>(user, HttpStatus.CREATED);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     private String validatePasswordStrength(String password) {
@@ -185,4 +187,19 @@ public class AuthenticationController {
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token ne može biti osvežen");
     }
+
+    @GetMapping("/activate")
+    public ResponseEntity<?> activateUser(@RequestParam("token") String token) {
+        boolean activated = userService.activateUser(token);
+
+        Map<String, String> response = new HashMap<>();
+
+        if (activated) {
+            return ResponseEntity.ok("Account successfully activated.");
+        } else {
+            return ResponseEntity.ok("Link for account activation is invalid or expired.");
+        }
+    }
+
+
 }

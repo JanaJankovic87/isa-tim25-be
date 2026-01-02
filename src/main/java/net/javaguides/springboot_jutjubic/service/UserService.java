@@ -10,4 +10,5 @@ public interface UserService {
     User findByEmail(String email);
     List<User> findAll();
     User save(UserRequest userRequest);
+    boolean activateUser(String token);
 }

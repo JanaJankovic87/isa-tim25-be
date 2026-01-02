@@ -51,6 +51,15 @@ public class User implements UserDetails {
     @Column(name = "address")
     private String address;
 
+    @Column(name = "verification_token")
+    private String verificationToken;
+
+    @Column(name = "is_verified")
+    private boolean isVerified;
+
+    @Column(name = "reset_token")
+    private String resetToken;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "user_role",
             joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"),
@@ -100,6 +109,30 @@ public class User implements UserDetails {
     public void setRoles(List<Role> roles) {
         this.roles = roles;
     }
+
+    public String getVerificationToken() {
+        return verificationToken;
+    }
+
+    public void setVerificationToken(String verificationToken) {
+        this.verificationToken = verificationToken;
+    }
+
+    public boolean isVerified() {
+        return isVerified;
+    }
+
+    public void setVerified(boolean isVerified) {
+        this.isVerified = isVerified;
+    }
+
+    public String getResetToken() {
+        return resetToken;
+    }
+    public void setResetToken(String resetToken) {
+        this.resetToken = resetToken;
+    }
+
 
     public List<Role> getRoles() {
         return roles;
