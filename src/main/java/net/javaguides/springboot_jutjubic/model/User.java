@@ -119,10 +119,12 @@ public class User implements UserDetails {
         this.email = email;
     }
 
-    public String getAddres() {
+    public String getAddress() {
         return address;
     }
-    public void setAddress(String Address) { this.firstName = address; }
+    public void setAddress(String address) {
+        this.address = address;
+    }
 
     @Override
     public boolean isEnabled() {
