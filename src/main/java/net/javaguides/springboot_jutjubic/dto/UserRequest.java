@@ -2,36 +2,42 @@ package net.javaguides.springboot_jutjubic.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public class UserRequest {
     private Long id;
 
-    @NotBlank(message = "Korisničko ime je obavezno")
-    @Size(min = 3, max = 50, message = "Korisničko ime mora imati između 3 i 50 karaktera")
+    @NotBlank(message = "Username is required")
+    @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
     private String username;
 
-    @NotBlank(message = "Lozinka je obavezna")
-    @Size(min = 8, message = "Lozinka mora imati najmanje 8 karaktera")
+    @NotBlank(message = "Password is required")
+    @Size(min = 8, message = "Password must have 8 characters")
     private String password;
 
-    @NotBlank(message = "Potvrda lozinke je obavezna")
+    @NotBlank(message = "Password confirmation is required")
     private String confirmPassword;
 
-    @NotBlank(message = "Ime je obavezno")
-    @Size(max = 100, message = "Ime ne sme biti duže od 100 karaktera")
+    @NotBlank(message = "First name is required")
+    @Size(max = 100, message = "First name must not exceed 100 characters")
     private String firstname;
 
-    @NotBlank(message = "Prezime je obavezno")
-    @Size(max = 100, message = "Prezime ne sme biti duže od 100 karaktera")
+    @NotBlank(message = "Last name is required")
+    @Size(max = 100, message = "Last name must not exceed 100 characters")
     private String lastname;
 
-    @NotBlank(message = "Email adresa je obavezna")
-    @Email(message = "Email adresa nije validna")
+    @NotBlank(message = "Email address is required")
+    @Email(message = "Email address is not valid")
+    @Pattern(
+            regexp = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$",
+            message = "Email must be a valid email address"
+    )
     private String email;
 
-    @NotBlank(message = "Adresa je obavezna")
-    @Size(max = 255, message = "Adresa ne sme biti duža od 255 karaktera")
+
+    @NotBlank(message = "Address is required")
+    @Size(max = 255, message = "Address must not exceed 255 characters")
     private String address;
 
     public UserRequest() {}

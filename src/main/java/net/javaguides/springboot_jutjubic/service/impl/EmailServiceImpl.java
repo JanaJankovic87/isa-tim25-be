@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -17,6 +18,7 @@ public class EmailServiceImpl implements EmailService {
     @Autowired
     private Environment env;
 
+    @Async
     public void sendVerificationEmail(String email, String verificationToken, String userName)
     {
         String subject = "Welcome " + userName + "! Verify your email for Jutjubic";

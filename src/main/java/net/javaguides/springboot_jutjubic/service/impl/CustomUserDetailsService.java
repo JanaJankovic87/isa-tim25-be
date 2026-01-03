@@ -22,7 +22,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
         if (user == null) {
             throw new UsernameNotFoundException(
-                    "Korisnik sa navedenim kredencijalima nije pronađen"
+                    "User with this credentials not found."
             );
         }
 

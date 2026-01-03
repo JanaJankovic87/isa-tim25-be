@@ -1,7 +1,7 @@
 package net.javaguides.springboot_jutjubic.dto;
 
 public class JwtAuthenticationRequest {
-    private String username;  // može biti email ili username
+    private String username;
     private String password;
 
     public JwtAuthenticationRequest() {

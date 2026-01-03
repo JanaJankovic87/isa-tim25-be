@@ -11,7 +11,6 @@ import net.javaguides.springboot_jutjubic.model.User;
 import net.javaguides.springboot_jutjubic.repository.UserRepository;
 import net.javaguides.springboot_jutjubic.service.RoleService;
 import net.javaguides.springboot_jutjubic.service.UserService;
-import net.javaguides.springboot_jutjubic.service.EmailService;
 import net.javaguides.springboot_jutjubic.model.VerificationToken;
 import net.javaguides.springboot_jutjubic.repository.VerificationTokenRepository;
 
@@ -30,9 +29,6 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private RoleService roleService;
-
-    @Autowired
-    private EmailService emailService;
 
     @Autowired
     private VerificationTokenRepository verificationTokenRepository;
@@ -79,7 +75,7 @@ public class UserServiceImpl implements UserService {
         VerificationToken verificationToken = new VerificationToken(token, user);
         verificationTokenRepository.save(verificationToken);
 
-        emailService.sendVerificationEmail(user.getEmail(), token, user.getUsername());
+        user.setVerificationToken(token);
 
         return user;
     }
@@ -99,6 +95,7 @@ public class UserServiceImpl implements UserService {
 
         User user = verificationToken.getUser();
         user.setEnabled(true);
+        user.setVerified(true);
         userRepository.save(user);
 
         verificationTokenRepository.delete(verificationToken);

@@ -3,11 +3,15 @@ package net.javaguides.springboot_jutjubic.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import net.javaguides.springboot_jutjubic.service.EmailService;
+import net.javaguides.springboot_jutjubic.service.LoginAttemptService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -38,30 +42,96 @@ public class AuthenticationController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private LoginAttemptService loginAttemptService;
+
+    @Autowired
+    private EmailService emailService;
 
     @PostMapping("/login")
-    public ResponseEntity<UserTokenState> createAuthenticationToken(
+    public ResponseEntity<?> createAuthenticationToken(
             @RequestBody JwtAuthenticationRequest authenticationRequest,
             HttpServletRequest request,
             HttpServletResponse response) {
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        authenticationRequest.getUsername(),
-                        authenticationRequest.getPassword()
-                )
-        );
+        String ipAddress = getClientIpAddress(request);
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        try {
+            Integer attempts = loginAttemptService.getAttempts(ipAddress);
+            if (attempts != null && attempts >= 5) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Too many failed login attempts. Please try again after 60 seconds.");
+                error.put("remainingAttempts", 0);
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error);
+            }
+        } catch (Exception e) {
+            System.err.println("Cache error: " + e.getMessage());
+            e.printStackTrace();
+        }
 
-        User user = (User) authentication.getPrincipal();
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            authenticationRequest.getUsername(),
+                            authenticationRequest.getPassword()
+                    )
+            );
 
-        String jwt = tokenUtils.generateToken(user.getUsername(), request);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            User user = (User) authentication.getPrincipal();
+            String jwt = tokenUtils.generateToken(user.getUsername(), request);
+            int expiresIn = tokenUtils.getExpiredIn();
 
-        String deviceType = tokenUtils.getDeviceTypeFromToken(jwt);
-        int expiresIn = tokenUtils.getExpiredIn(deviceType);
+            try {
+                loginAttemptService.resetAttempts(ipAddress);
+            } catch (Exception e) {
+                System.err.println("Cache error on reset: " + e.getMessage());
+            }
 
-        return ResponseEntity.ok(new UserTokenState(jwt, expiresIn));
+            return ResponseEntity.ok(new UserTokenState(jwt, expiresIn));
+
+        } catch (DisabledException e) {
+            int remainingAttempts = 5;
+            try {
+                Integer currentAttempts = loginAttemptService.getAttempts(ipAddress);
+                int newAttempts = (currentAttempts == null) ? 1 : currentAttempts + 1;
+                loginAttemptService.updateAttempts(ipAddress, newAttempts);
+                remainingAttempts = Math.max(0, 5 - newAttempts);
+            } catch (Exception cacheEx) {
+                System.err.println("Cache error: " + cacheEx.getMessage());
+            }
+
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Account is not activated. Please check your email for activation link.");
+            error.put("remainingAttempts", remainingAttempts);
+
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+
+        } catch (BadCredentialsException e) {
+            int remainingAttempts = 5;
+            try {
+                Integer currentAttempts = loginAttemptService.getAttempts(ipAddress);
+
+                int newAttempts = (currentAttempts == null) ? 1 : currentAttempts + 1;
+
+                loginAttemptService.updateAttempts(ipAddress, newAttempts);
+                remainingAttempts = Math.max(0, 5 - newAttempts);
+
+            } catch (Exception cacheEx) {
+                System.err.println("Cache error: " + cacheEx.getMessage());
+                cacheEx.printStackTrace();
+            }
+
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Wrong username or password.");
+            error.put("remainingAttempts", remainingAttempts);
+
+            if (remainingAttempts == 0) {
+                error.put("message", "Too many failed login attempts. Please try again after 60 seconds.");
+            }
+
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+        }
     }
 
     @PostMapping("/login/{deviceType}")
@@ -106,21 +176,21 @@ public class AuthenticationController {
 
         if (!userRequest.getPassword().equals(userRequest.getConfirmPassword())) {
             Map<String, String> error = new HashMap<>();
-            error.put("confirmPassword", "Lozinke se ne poklapaju");
+            error.put("confirmPassword", "Password confirmation does not match");
             return ResponseEntity.badRequest().body(error);
         }
 
         User existingUserByUsername = this.userService.findByUsername(userRequest.getUsername());
         if (existingUserByUsername != null) {
             Map<String, String> error = new HashMap<>();
-            error.put("username", "Korisničko ime već postoji");
+            error.put("username", "Username already exists");
             return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
         }
 
         User existingUserByEmail = this.userService.findByEmail(userRequest.getEmail());
         if (existingUserByEmail != null) {
             Map<String, String> error = new HashMap<>();
-            error.put("email", "Email adresa je već registrovana");
+            error.put("email", "Email already in use");
             return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
         }
 
@@ -131,16 +201,31 @@ public class AuthenticationController {
             return ResponseEntity.badRequest().body(error);
         }
 
-        User user = this.userService.save(userRequest);
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Registration successful. Please check your email for verification.");
+        try {
+            User user = this.userService.save(userRequest);
 
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
+            String token = user.getVerificationToken();
+
+            if (token != null && !token.isEmpty()) {
+                emailService.sendVerificationEmail(user.getEmail(), token, user.getUsername());
+            }
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Registration successful. Please check your email for verification.");
+
+            return new ResponseEntity<>(response, HttpStatus.CREATED);
+        } catch (Exception e) {
+            System.err.println("ERROR during signup: " + e.getMessage());
+            e.printStackTrace();
+
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Registration failed: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
     }
 
     private String validatePasswordStrength(String password) {
         if (password.length() < 8) {
-            return "Lozinka mora imati najmanje 8 karaktera";
+            return "Password must be at least 8 characters long";
         }
 
         boolean hasUpper = password.chars().anyMatch(Character::isUpperCase);
@@ -148,7 +233,7 @@ public class AuthenticationController {
         boolean hasDigit = password.chars().anyMatch(Character::isDigit);
 
         if (!hasUpper || !hasLower || !hasDigit) {
-            return "Lozinka mora sadržati bar jedno veliko slovo, malo slovo i cifru";
+            return "Password must contain at least one uppercase letter, one lowercase letter, and one digit";
         }
 
         return null;
@@ -199,6 +284,26 @@ public class AuthenticationController {
         } else {
             return ResponseEntity.ok("Link for account activation is invalid or expired.");
         }
+    }
+
+    @GetMapping("/clearLoginAttempts")
+    public ResponseEntity<String> clearLoginAttempts() {
+        loginAttemptService.removeFromCache();
+        return ResponseEntity.ok("All login attempts removed from cache!");
+    }
+
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty()) {
+            return xRealIp;
+        }
+
+        return request.getRemoteAddr();
     }
 
 
