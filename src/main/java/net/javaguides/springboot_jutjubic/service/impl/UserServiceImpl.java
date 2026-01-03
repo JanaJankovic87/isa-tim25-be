@@ -1,6 +1,7 @@
 package net.javaguides.springboot_jutjubic.service.impl;
 
 import jakarta.transaction.Transactional;
+import net.javaguides.springboot_jutjubic.model.Address;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -60,8 +61,15 @@ public class UserServiceImpl implements UserService {
         user.setEmail(userRequest.getEmail());
         user.setFirstName(userRequest.getFirstname());
         user.setLastName(userRequest.getLastname());
-        user.setAddress(userRequest.getAddress());
 
+        if (userRequest.getAddress() != null) {
+            Address address = new Address();
+            address.setStreet(userRequest.getAddress().getStreet());
+            address.setCity(userRequest.getAddress().getCity());
+            address.setPostalCode(userRequest.getAddress().getPostalCode());
+            address.setCountry(userRequest.getAddress().getCountry());
+            user.setAddress(address);
+        }
         user.setPassword(passwordEncoder.encode(userRequest.getPassword()));
         user.setEnabled(false);
         user.setLastPasswordResetDate(new Timestamp(System.currentTimeMillis()));

@@ -91,15 +91,7 @@ public class AuthenticationController {
             return ResponseEntity.ok(new UserTokenState(jwt, expiresIn));
 
         } catch (DisabledException e) {
-            int remainingAttempts = 5;
-            try {
-                Integer currentAttempts = loginAttemptService.getAttempts(ipAddress);
-                int newAttempts = (currentAttempts == null) ? 1 : currentAttempts + 1;
-                loginAttemptService.updateAttempts(ipAddress, newAttempts);
-                remainingAttempts = Math.max(0, 5 - newAttempts);
-            } catch (Exception cacheEx) {
-                System.err.println("Cache error: " + cacheEx.getMessage());
-            }
+            int remainingAttempts = updateAttempts(ipAddress);
 
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Account is not activated. Please check your email for activation link.");
@@ -135,31 +127,71 @@ public class AuthenticationController {
     }
 
     @PostMapping("/login/{deviceType}")
-    public ResponseEntity<UserTokenState> createAuthenticationTokenForDevice(
+    public ResponseEntity<?> createAuthenticationTokenForDevice(
             @RequestBody JwtAuthenticationRequest authenticationRequest,
             @PathVariable String deviceType,
-            HttpServletResponse response) {
+            HttpServletRequest request) {
 
         if (!isValidDeviceType(deviceType)) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body("Invalid device type");
         }
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        authenticationRequest.getUsername(),
-                        authenticationRequest.getPassword()
-                )
-        );
+        String ipAddress = getClientIpAddress(request);
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        try {
+            Integer attempts = loginAttemptService.getAttempts(ipAddress);
+            if (attempts != null && attempts >= 5) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Too many failed login attempts. Please try again after 60 seconds.");
+                error.put("remainingAttempts", 0);
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error);
+            }
+        } catch (Exception e) {
+            System.err.println("Cache error: " + e.getMessage());
+        }
 
-        User user = (User) authentication.getPrincipal();
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            authenticationRequest.getUsername(),
+                            authenticationRequest.getPassword()
+                    )
+            );
 
-        String jwt = tokenUtils.generateTokenForDevice(user.getUsername(), deviceType, user);
-        int expiresIn = tokenUtils.getExpiredIn(deviceType);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            User user = (User) authentication.getPrincipal();
 
-        return ResponseEntity.ok(new UserTokenState(jwt, expiresIn));
+            String jwt = tokenUtils.generateTokenForDevice(user.getUsername(), deviceType, user);
+            int expiresIn = tokenUtils.getExpiredIn(deviceType);
+
+            loginAttemptService.resetAttempts(ipAddress);
+
+            return ResponseEntity.ok(new UserTokenState(jwt, expiresIn));
+
+        } catch (DisabledException e) {
+            int remainingAttempts = updateAttempts(ipAddress);
+
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Account is not activated. Please check your email.");
+            error.put("remainingAttempts", remainingAttempts);
+
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+
+        } catch (BadCredentialsException e) {
+            int remainingAttempts = updateAttempts(ipAddress);
+
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Wrong username or password.");
+            error.put("remainingAttempts", remainingAttempts);
+
+            if (remainingAttempts == 0) {
+                error.put("message", "Too many failed login attempts. Please try again after 60 seconds.");
+            }
+
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+        }
     }
+
 
     @PostMapping("/signup")
     public ResponseEntity<?> addUser(
@@ -304,6 +336,18 @@ public class AuthenticationController {
         }
 
         return request.getRemoteAddr();
+    }
+
+    private int updateAttempts(String ipAddress) {
+        try {
+            Integer currentAttempts = loginAttemptService.getAttempts(ipAddress);
+            int newAttempts = (currentAttempts == null) ? 1 : currentAttempts + 1;
+            loginAttemptService.updateAttempts(ipAddress, newAttempts);
+            return Math.max(0, 5 - newAttempts);
+        } catch (Exception e) {
+            System.err.println("Cache error: " + e.getMessage());
+            return 5;
+        }
     }
 
 
