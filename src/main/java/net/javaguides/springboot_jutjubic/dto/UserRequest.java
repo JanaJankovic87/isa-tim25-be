@@ -1,5 +1,6 @@
 package net.javaguides.springboot_jutjubic.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -36,9 +37,8 @@ public class UserRequest {
     private String email;
 
 
-    @NotBlank(message = "Address is required")
-    @Size(max = 255, message = "Address must not exceed 255 characters")
-    private String address;
+    @Valid
+    private AddressDTO address;
 
     public UserRequest() {}
 
@@ -98,11 +98,11 @@ public class UserRequest {
         this.email = email;
     }
 
-    public String getAddress() {
+    public AddressDTO getAddress() {
         return address;
     }
 
-    public void setAddress(String address) {
+    public void setAddress(AddressDTO address) {
         this.address = address;
     }
 }
