@@ -79,8 +79,10 @@ public class AuthenticationController {
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
             User user = (User) authentication.getPrincipal();
-            String jwt = tokenUtils.generateToken(user.getUsername(), request);
-            int expiresIn = tokenUtils.getExpiredIn();
+
+            String deviceType = detectDeviceTypeFromRequest(request);
+            String jwt = tokenUtils.generateTokenForDevice(user.getEmail(), deviceType, user);
+            int expiresIn = tokenUtils.getExpiredIn(deviceType);
 
             try {
                 loginAttemptService.resetAttempts(ipAddress);
@@ -161,8 +163,12 @@ public class AuthenticationController {
             SecurityContextHolder.getContext().setAuthentication(authentication);
             User user = (User) authentication.getPrincipal();
 
-            String jwt = tokenUtils.generateTokenForDevice(user.getUsername(), deviceType, user);
-            int expiresIn = tokenUtils.getExpiredIn(deviceType);
+            String resolvedDeviceType = deviceType;
+            if (resolvedDeviceType == null || resolvedDeviceType.isEmpty() || "unknown".equals(resolvedDeviceType)) {
+                resolvedDeviceType = detectDeviceTypeFromRequest(request);
+            }
+            String jwt = tokenUtils.generateTokenForDevice(user.getEmail(), resolvedDeviceType, user);
+            int expiresIn = tokenUtils.getExpiredIn(resolvedDeviceType);
 
             loginAttemptService.resetAttempts(ipAddress);
 
@@ -288,12 +294,11 @@ public class AuthenticationController {
 
         try {
             String username = tokenUtils.getUsernameFromToken(token);
-            User user = userService.findByUsername(username);
+            User user = userService.findByEmail(username);
 
             if (user != null && tokenUtils.validateToken(token, user)) {
-                // Generiši novi token sa istim tipom uređaja
                 String deviceType = tokenUtils.getDeviceTypeFromToken(token);
-                String newToken = tokenUtils.generateTokenForDevice(username, deviceType, user);
+                String newToken = tokenUtils.generateTokenForDevice(user.getEmail(), deviceType, user);
                 int expiresIn = tokenUtils.getExpiredIn(deviceType);
 
                 return ResponseEntity.ok(new UserTokenState(newToken, expiresIn));
@@ -303,6 +308,34 @@ public class AuthenticationController {
         }
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token ne može biti osvežen");
+    }
+
+    // Detect device type helper used by login token generation
+    private String detectDeviceTypeFromRequest(HttpServletRequest request) {
+        if (request == null) {
+            return "web";
+        }
+
+        String userAgent = request.getHeader("User-Agent");
+        if (userAgent == null) {
+            return "web";
+        }
+
+        userAgent = userAgent.toLowerCase();
+
+        if (userAgent.contains("mobile") ||
+                userAgent.contains("android") ||
+                userAgent.contains("iphone") ||
+                userAgent.contains("windows phone")) {
+            return "mobile";
+        }
+
+        if (userAgent.contains("tablet") ||
+                userAgent.contains("ipad")) {
+            return "tablet";
+        }
+
+        return "web";
     }
 
     @GetMapping("/activate")
@@ -349,6 +382,5 @@ public class AuthenticationController {
             return 5;
         }
     }
-
 
 }

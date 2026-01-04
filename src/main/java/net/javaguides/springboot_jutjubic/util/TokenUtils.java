@@ -24,7 +24,7 @@ public class TokenUtils {
     @Value("${jwt.issuer:spring-security-example}")
     private String APP_NAME;
 
-    @Value("${jwt.secret:my-super-secure-jwt-secret-key-for-production-use-change-this-value-immediately}")
+    @Value("${jwt.secret}")
     private String SECRET;
 
     @Value("${jwt.expires-in.web:1800000}")
@@ -48,7 +48,7 @@ public class TokenUtils {
     private static final String CLAIM_KEY_DEVICE = "device";
     private static final String CLAIM_KEY_USER_ID = "userId";
     private static final String CLAIM_KEY_EMAIL = "email";
-    private static final String CLAIM_KEY_TOKEN_ID = "jti"; // JWT ID
+    private static final String CLAIM_KEY_TOKEN_ID = "jti";
 
     private SignatureAlgorithm SIGNATURE_ALGORITHM = SignatureAlgorithm.HS256;
 
@@ -67,11 +67,15 @@ public class TokenUtils {
         Map<String, Object> claims = new HashMap<>();
 
         claims.put(CLAIM_KEY_DEVICE, deviceType);
-        claims.put(CLAIM_KEY_TOKEN_ID, UUID.randomUUID().toString()); // Jedinstveni ID tokena
+        claims.put(CLAIM_KEY_TOKEN_ID, UUID.randomUUID().toString());
 
+        String subjectToUse = username;
         if (user != null) {
             claims.put(CLAIM_KEY_USER_ID, user.getId());
             claims.put(CLAIM_KEY_EMAIL, user.getEmail());
+            if (user.getEmail() != null && !user.getEmail().isEmpty()) {
+                subjectToUse = user.getEmail();
+            }
         }
 
         Date now = new Date(System.currentTimeMillis());
@@ -80,7 +84,7 @@ public class TokenUtils {
         return Jwts.builder()
                 .setClaims(claims)
                 .setIssuer(APP_NAME)
-                .setSubject(username)
+                .setSubject(subjectToUse)
                 .setAudience(deviceType)
                 .setIssuedAt(now)
                 .setExpiration(expirationDate)
@@ -137,8 +141,15 @@ public class TokenUtils {
     public String getToken(HttpServletRequest request) {
         String authHeader = getAuthHeaderFromHeader(request);
 
+
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            return authHeader.substring(7);
+            String token = authHeader.substring(7);
+            return token;
+        }
+
+        String authHeaderLower = request.getHeader("authorization");
+        if (authHeaderLower != null && authHeaderLower.startsWith("Bearer ")) {
+            return authHeaderLower.substring(7);
         }
 
         return null;
@@ -147,10 +158,15 @@ public class TokenUtils {
     public String getUsernameFromToken(String token) {
         try {
             final Claims claims = getAllClaimsFromToken(token);
-            return claims.getSubject();
+            if (claims == null) {
+                return null;
+            }
+            String username = claims.getSubject();
+            return username;
         } catch (ExpiredJwtException ex) {
             throw ex;
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }
@@ -241,19 +257,36 @@ public class TokenUtils {
         } catch (ExpiredJwtException ex) {
             throw ex;
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }
 
     public Boolean validateToken(String token, UserDetails userDetails) {
-        User user = (User) userDetails;
-        final String username = getUsernameFromToken(token);
+        if (token == null || userDetails == null) {
+            return false;
+        }
+
+        User user = null;
+        if (userDetails instanceof User) {
+            user = (User) userDetails;
+        }
+
+        final String subject = getUsernameFromToken(token);
         final Date created = getIssuedAtDateFromToken(token);
 
-        return (username != null
-                && username.equals(userDetails.getUsername())
+        if (subject == null) {
+            return false;
+        }
+
+        boolean subjectMatches = subject.equals(userDetails.getUsername());
+        if (!subjectMatches && user != null && user.getEmail() != null) {
+            subjectMatches = subject.equals(user.getEmail());
+        }
+
+        return (subjectMatches
                 && !isTokenExpired(token)
-                && !isCreatedBeforeLastPasswordReset(created, user.getLastPasswordResetDate()));
+                && !isCreatedBeforeLastPasswordReset(created, user != null ? user.getLastPasswordResetDate() : null));
     }
 
     private Boolean isTokenExpired(String token) {
