@@ -44,7 +44,39 @@
         <resources>
             <heap unit="entries">1000</heap>
         </resources>
+    </cache>
 
+    <!-- ==================== DODAJ OVAJ CACHE ZA THUMBNAILS ==================== -->
+    <cache alias="thumbnails">
+        <!-- Key = ID video posta (Long), Value = thumbnail slika (byte[]) -->
+        <key-type>java.lang.Long</key-type>
+        <value-type>byte[]</value-type>
+
+        <!-- Thumbnail se čuva 1 sat u kešu -->
+        <expiry>
+            <ttl unit="hours">1</ttl>
+        </expiry>
+
+        <!-- Logger će pratiti sve operacije -->
+        <listeners>
+            <listener>
+                <class>net.javaguides.springboot_jutjubic.logger.CacheLogger</class>
+                <event-firing-mode>ASYNCHRONOUS</event-firing-mode>
+                <event-ordering-mode>UNORDERED</event-ordering-mode>
+                <events-to-fire-on>CREATED</events-to-fire-on>
+                <events-to-fire-on>UPDATED</events-to-fire-on>
+                <events-to-fire-on>EXPIRED</events-to-fire-on>
+                <events-to-fire-on>REMOVED</events-to-fire-on>
+                <events-to-fire-on>EVICTED</events-to-fire-on>
+            </listener>
+        </listeners>
+
+        <resources>
+            <!-- Max 500 thumbnail-a u RAM-u -->
+            <heap unit="entries">500</heap>
+            <!-- 50MB za thumbnail slike -->
+            <offheap unit="MB">50</offheap>
+        </resources>
     </cache>
 
 </config>

@@ -68,6 +68,7 @@ public class WebSecurityConfig {
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/error").permitAll()
+                .requestMatchers("/api/videos/**").permitAll()
                 .anyRequest().authenticated()
         );
 
