@@ -79,8 +79,10 @@ public class AuthenticationController {
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
             User user = (User) authentication.getPrincipal();
-            String jwt = tokenUtils.generateToken(user.getUsername(), request);
-            int expiresIn = tokenUtils.getExpiredIn();
+
+            String deviceType = detectDeviceTypeFromRequest(request);
+            String jwt = tokenUtils.generateTokenForDevice(user.getEmail(), deviceType, user);
+            int expiresIn = tokenUtils.getExpiredIn(deviceType);
 
             try {
                 loginAttemptService.resetAttempts(ipAddress);
@@ -91,15 +93,7 @@ public class AuthenticationController {
             return ResponseEntity.ok(new UserTokenState(jwt, expiresIn));
 
         } catch (DisabledException e) {
-            int remainingAttempts = 5;
-            try {
-                Integer currentAttempts = loginAttemptService.getAttempts(ipAddress);
-                int newAttempts = (currentAttempts == null) ? 1 : currentAttempts + 1;
-                loginAttemptService.updateAttempts(ipAddress, newAttempts);
-                remainingAttempts = Math.max(0, 5 - newAttempts);
-            } catch (Exception cacheEx) {
-                System.err.println("Cache error: " + cacheEx.getMessage());
-            }
+            int remainingAttempts = updateAttempts(ipAddress);
 
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Account is not activated. Please check your email for activation link.");
@@ -135,31 +129,75 @@ public class AuthenticationController {
     }
 
     @PostMapping("/login/{deviceType}")
-    public ResponseEntity<UserTokenState> createAuthenticationTokenForDevice(
+    public ResponseEntity<?> createAuthenticationTokenForDevice(
             @RequestBody JwtAuthenticationRequest authenticationRequest,
             @PathVariable String deviceType,
-            HttpServletResponse response) {
+            HttpServletRequest request) {
 
         if (!isValidDeviceType(deviceType)) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body("Invalid device type");
         }
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        authenticationRequest.getUsername(),
-                        authenticationRequest.getPassword()
-                )
-        );
+        String ipAddress = getClientIpAddress(request);
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        try {
+            Integer attempts = loginAttemptService.getAttempts(ipAddress);
+            if (attempts != null && attempts >= 5) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Too many failed login attempts. Please try again after 60 seconds.");
+                error.put("remainingAttempts", 0);
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error);
+            }
+        } catch (Exception e) {
+            System.err.println("Cache error: " + e.getMessage());
+        }
 
-        User user = (User) authentication.getPrincipal();
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            authenticationRequest.getUsername(),
+                            authenticationRequest.getPassword()
+                    )
+            );
 
-        String jwt = tokenUtils.generateTokenForDevice(user.getUsername(), deviceType, user);
-        int expiresIn = tokenUtils.getExpiredIn(deviceType);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            User user = (User) authentication.getPrincipal();
 
-        return ResponseEntity.ok(new UserTokenState(jwt, expiresIn));
+            String resolvedDeviceType = deviceType;
+            if (resolvedDeviceType == null || resolvedDeviceType.isEmpty() || "unknown".equals(resolvedDeviceType)) {
+                resolvedDeviceType = detectDeviceTypeFromRequest(request);
+            }
+            String jwt = tokenUtils.generateTokenForDevice(user.getEmail(), resolvedDeviceType, user);
+            int expiresIn = tokenUtils.getExpiredIn(resolvedDeviceType);
+
+            loginAttemptService.resetAttempts(ipAddress);
+
+            return ResponseEntity.ok(new UserTokenState(jwt, expiresIn));
+
+        } catch (DisabledException e) {
+            int remainingAttempts = updateAttempts(ipAddress);
+
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Account is not activated. Please check your email.");
+            error.put("remainingAttempts", remainingAttempts);
+
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+
+        } catch (BadCredentialsException e) {
+            int remainingAttempts = updateAttempts(ipAddress);
+
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Wrong username or password.");
+            error.put("remainingAttempts", remainingAttempts);
+
+            if (remainingAttempts == 0) {
+                error.put("message", "Too many failed login attempts. Please try again after 60 seconds.");
+            }
+
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+        }
     }
+
 
     @PostMapping("/signup")
     public ResponseEntity<?> addUser(
@@ -256,12 +294,11 @@ public class AuthenticationController {
 
         try {
             String username = tokenUtils.getUsernameFromToken(token);
-            User user = userService.findByUsername(username);
+            User user = userService.findByEmail(username);
 
             if (user != null && tokenUtils.validateToken(token, user)) {
-                // Generiši novi token sa istim tipom uređaja
                 String deviceType = tokenUtils.getDeviceTypeFromToken(token);
-                String newToken = tokenUtils.generateTokenForDevice(username, deviceType, user);
+                String newToken = tokenUtils.generateTokenForDevice(user.getEmail(), deviceType, user);
                 int expiresIn = tokenUtils.getExpiredIn(deviceType);
 
                 return ResponseEntity.ok(new UserTokenState(newToken, expiresIn));
@@ -271,6 +308,34 @@ public class AuthenticationController {
         }
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token ne može biti osvežen");
+    }
+
+    // Detect device type helper used by login token generation
+    private String detectDeviceTypeFromRequest(HttpServletRequest request) {
+        if (request == null) {
+            return "web";
+        }
+
+        String userAgent = request.getHeader("User-Agent");
+        if (userAgent == null) {
+            return "web";
+        }
+
+        userAgent = userAgent.toLowerCase();
+
+        if (userAgent.contains("mobile") ||
+                userAgent.contains("android") ||
+                userAgent.contains("iphone") ||
+                userAgent.contains("windows phone")) {
+            return "mobile";
+        }
+
+        if (userAgent.contains("tablet") ||
+                userAgent.contains("ipad")) {
+            return "tablet";
+        }
+
+        return "web";
     }
 
     @GetMapping("/activate")
@@ -306,5 +371,16 @@ public class AuthenticationController {
         return request.getRemoteAddr();
     }
 
+    private int updateAttempts(String ipAddress) {
+        try {
+            Integer currentAttempts = loginAttemptService.getAttempts(ipAddress);
+            int newAttempts = (currentAttempts == null) ? 1 : currentAttempts + 1;
+            loginAttemptService.updateAttempts(ipAddress, newAttempts);
+            return Math.max(0, 5 - newAttempts);
+        } catch (Exception e) {
+            System.err.println("Cache error: " + e.getMessage());
+            return 5;
+        }
+    }
 
 }

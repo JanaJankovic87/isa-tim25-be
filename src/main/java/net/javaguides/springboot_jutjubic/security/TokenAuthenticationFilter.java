@@ -31,7 +31,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
     public void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws IOException, ServletException {
 
-        String username;
+        String username = null;
         String authToken = tokenUtils.getToken(request);
 
         try {
@@ -39,17 +39,21 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
                 username = tokenUtils.getUsernameFromToken(authToken);
 
                 if (username != null) {
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                    try {
+                        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                    if (tokenUtils.validateToken(authToken, userDetails)) {
-                        TokenBasedAuthentication authentication = new TokenBasedAuthentication(userDetails);
-                        authentication.setToken(authToken);
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                        if (tokenUtils.validateToken(authToken, userDetails)) {
+                            TokenBasedAuthentication authentication = new TokenBasedAuthentication(userDetails);
+                            authentication.setToken(authToken);
+                            SecurityContextHolder.getContext().setAuthentication(authentication);
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
                     }
                 }
             }
-        } catch (ExpiredJwtException ex) {
-            LOGGER.debug("Token expired!");
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
 
         chain.doFilter(request, response);

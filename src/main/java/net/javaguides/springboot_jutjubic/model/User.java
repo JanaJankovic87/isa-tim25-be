@@ -48,8 +48,9 @@ public class User implements UserDetails {
     @Column(name = "last_password_reset_date")
     private Timestamp lastPasswordResetDate;
 
-    @Column(name = "address")
-    private String address;
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinColumn(name = "address_id", referencedColumnName = "id")
+    private Address address;
 
     @Column(name = "verification_token")
     private String verificationToken;
@@ -152,10 +153,11 @@ public class User implements UserDetails {
         this.email = email;
     }
 
-    public String getAddress() {
+    public Address getAddress() {
         return address;
     }
-    public void setAddress(String address) {
+
+    public void setAddress(Address address) {
         this.address = address;
     }
 
