@@ -2,6 +2,7 @@ package net.javaguides.springboot_jutjubic.model;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import jakarta.persistence.*;
 
@@ -144,4 +145,18 @@ public class Video implements Serializable {
         return "VideoPost [id=" + id + ", title=" + title + ", userId=" + userId +
                 ", createdAt=" + createdAt + ", version=" + version + "]";
     }
+
+
+    @OneToMany(mappedBy = "video", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Comment> comments = new ArrayList<>();
+
+
+    public List<Comment> getComments() {
+        return comments;
+    }
+
+    public void setComments(List<Comment> comments) {
+        this.comments = comments;
+    }
+
 }

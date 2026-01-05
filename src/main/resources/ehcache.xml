@@ -79,4 +79,15 @@
         </resources>
     </cache>
 
+    <cache alias="videoComments">
+        <key-type>java.lang.Object</key-type>
+        <value-type>java.lang.Object</value-type>
+        <expiry>
+            <ttl unit="minutes">10</ttl>
+        </expiry>
+        <resources>
+            <heap unit="entries">1000</heap>
+        </resources>
+    </cache>
+
 </config>
