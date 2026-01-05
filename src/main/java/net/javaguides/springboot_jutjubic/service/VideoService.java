@@ -24,4 +24,6 @@ public interface VideoService {
     void invalidateThumbnailCache(Long id);
 
     byte[] getVideoFile(Long id) throws IOException;
+
+    List<Video> searchByKeyword(String keyword);
 }

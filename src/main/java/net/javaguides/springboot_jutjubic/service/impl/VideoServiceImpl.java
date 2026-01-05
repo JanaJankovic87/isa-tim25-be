@@ -19,7 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.*;
 
 @Service
@@ -232,6 +232,13 @@ public class VideoServiceImpl implements VideoService {
 
         return Files.readAllBytes(videoPath);
     }
+
+    public List<Video> searchByKeyword(String keyword) {
+        List<Video> byTitle = videoRepository.findByTitleContainingIgnoreCase(keyword);
+        return new ArrayList<>(byTitle);
+    }
+
+
 }
 
 

@@ -209,4 +209,10 @@ public class VideoController {
     public ResponseEntity<String> health() {
         return ResponseEntity.ok("Video service is running");
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<Video>> searchVideos(@RequestParam("keyword") String keyword) {
+        List<Video> videos = videoService.searchByKeyword(keyword);
+        return ResponseEntity.ok(videos);
+    }
 }
