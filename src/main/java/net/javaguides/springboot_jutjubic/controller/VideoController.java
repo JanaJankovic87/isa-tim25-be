@@ -215,4 +215,85 @@ public class VideoController {
         List<Video> videos = videoService.searchByKeyword(keyword);
         return ResponseEntity.ok(videos);
     }
+
+
+
+    @PostMapping("/{id}/like")
+    public ResponseEntity<?> likeVideo(@PathVariable Long id) {
+        try {
+            User currentUser = getCurrentUser();
+            Video video = videoService.findById(id);
+
+            if (video == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body("Video nije pronađen");
+            }
+
+            videoService.likeVideo(id, currentUser.getId());
+
+            long likesCount = videoService.getLikesCount(id);
+
+            return ResponseEntity.ok()
+                    .body("Video uspešno lajkovan. Ukupno lajkova: " + likesCount);
+        } catch (RuntimeException e) {
+            logger.error("Greška pri lajkovanju videa", e);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(e.getMessage());
+        }
+    }
+
+
+    @DeleteMapping("/{id}/like")
+    public ResponseEntity<?> unlikeVideo(@PathVariable Long id) {
+        try {
+            User currentUser = getCurrentUser();
+            Video video = videoService.findById(id);
+
+            if (video == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body("Video nije pronađen");
+            }
+
+            videoService.unlikeVideo(id, currentUser.getId());
+
+            long likesCount = videoService.getLikesCount(id);
+
+            return ResponseEntity.ok()
+                    .body("Lajk uklonjen. Ukupno lajkova: " + likesCount);
+        } catch (RuntimeException e) {
+            logger.error("Greška pri uklanjanju lajka", e);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}/likes/count")
+    public ResponseEntity<Long> getLikesCount(@PathVariable Long id) {
+        Video video = videoService.findById(id);
+
+        if (video == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
+
+        long likesCount = videoService.getLikesCount(id);
+        return ResponseEntity.ok(likesCount);
+    }
+
+    @GetMapping("/{id}/likes/status")
+    public ResponseEntity<?> isLikedByCurrentUser(@PathVariable Long id) {
+        try {
+            User currentUser = getCurrentUser();
+            Video video = videoService.findById(id);
+
+            if (video == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body("Video nije pronađen");
+            }
+
+            boolean isLiked = videoService.isVideoLikedByUser(id, currentUser.getId());
+            return ResponseEntity.ok(isLiked);
+        } catch (RuntimeException e) {
+            return ResponseEntity.ok(false);
+        }
+    }
 }

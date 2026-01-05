@@ -1,5 +1,6 @@
 package net.javaguides.springboot_jutjubic.service.impl;
 
+import net.javaguides.springboot_jutjubic.model.VideoLike;
 import net.javaguides.springboot_jutjubic.service.VideoService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import net.javaguides.springboot_jutjubic.model.Video;
 import net.javaguides.springboot_jutjubic.repository.VideoRepository;
+import net.javaguides.springboot_jutjubic.repository.VideoLikeRepository;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -27,6 +29,9 @@ public class VideoServiceImpl implements VideoService {
 
     @Autowired
     private VideoRepository videoRepository;
+
+    @Autowired
+    private VideoLikeRepository videoLikeRepository;
 
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
@@ -238,7 +243,41 @@ public class VideoServiceImpl implements VideoService {
         return new ArrayList<>(byTitle);
     }
 
+    @Override
+    @Transactional
+    public void likeVideo(Long videoId, Long userId) {
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> new RuntimeException("Video sa ID " + videoId + " nije pronađen"));
 
+        if (videoLikeRepository.existsByUserIdAndVideoId(userId, videoId)) {
+            return;
+        }
+
+        VideoLike like = new VideoLike(userId, videoId);
+        videoLikeRepository.save(like);
+    }
+
+    @Override
+    @Transactional
+    public void unlikeVideo(Long videoId, Long userId) {
+        if (!videoLikeRepository.existsByUserIdAndVideoId(userId, videoId)) {
+            logger.warn("Korisnik {} nije lajkovao video {} - ne može unlajkovati", userId, videoId);
+            return;
+        }
+
+        videoLikeRepository.deleteByUserIdAndVideoId(userId, videoId);
+        logger.info("Korisnik {} uklonio like sa videa {}", userId, videoId);
+    }
+
+    @Override
+    public boolean isVideoLikedByUser(Long videoId, Long userId) {
+        return videoLikeRepository.existsByUserIdAndVideoId(userId, videoId);
+    }
+
+    @Override
+    public long getLikesCount(Long videoId) {
+        return videoLikeRepository.countByVideoId(videoId);
+    }
 }
 
 

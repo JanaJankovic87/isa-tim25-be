@@ -26,4 +26,12 @@ public interface VideoService {
     byte[] getVideoFile(Long id) throws IOException;
 
     List<Video> searchByKeyword(String keyword);
+
+    void likeVideo(Long videoId, Long userId);
+
+    void unlikeVideo(Long videoId, Long userId);
+
+    boolean isVideoLikedByUser(Long videoId, Long userId);
+
+    long getLikesCount(Long videoId);
 }
