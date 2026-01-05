@@ -3,6 +3,7 @@ package net.javaguides.springboot_jutjubic.config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -68,7 +69,11 @@ public class WebSecurityConfig {
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/error").permitAll()
-                .requestMatchers("/api/videos/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/videos/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/videos/*/comments/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/videos/*/comments").authenticated()
+                .requestMatchers(HttpMethod.DELETE, "/api/videos/*/comments/*").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/videos/**").authenticated()
                 .anyRequest().authenticated()
         );
 
