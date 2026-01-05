@@ -9,5 +9,8 @@ import java.util.List;
     @Repository
     public interface VideoRepository extends JpaRepository<Video, Long> {
         List<Video> findByUserId(Long userId);
+        List<Video> findAll();
+        List<Video> findByTitleContainingIgnoreCase(String title);
     }
+
 
