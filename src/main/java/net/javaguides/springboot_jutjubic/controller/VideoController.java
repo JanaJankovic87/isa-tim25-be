@@ -31,12 +31,11 @@ public class VideoController {
     private VideoService videoService;
 
     @Autowired
-    private UserService userService; // ✅ DODAJ UserService
+    private UserService userService;
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // ✅ NOVA METODA - Dobij trenutnog korisnika
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
@@ -46,12 +45,12 @@ public class VideoController {
 
         String username = null;
 
-        // Ako koristiš UserDetails (default Spring Security)
+        // UserDetails
         if (authentication.getPrincipal() instanceof UserDetails) {
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
             username = userDetails.getUsername();
         }
-        // Ako koristiš samo username string
+        // username string
         else if (authentication.getPrincipal() instanceof String) {
             username = (String) authentication.getPrincipal();
         }
@@ -98,19 +97,13 @@ public class VideoController {
                 return new ResponseEntity<>("At least one tag is required", HttpStatus.BAD_REQUEST);
             }
 
-            // ✅ NE TREBA userId iz DTO-a - uzimamo trenutnog korisnika!
-            // Stari kod:
-            // if (dto.getUserId() == null) {
-            //     return new ResponseEntity<>("User ID is required", HttpStatus.BAD_REQUEST);
-            // }
 
-            // ✅ NOVO - Uzmi trenutno ulogovanog korisnika
             User currentUser = getCurrentUser();
             logger.info("Korisnik {} kreira video", currentUser.getUsername());
 
             // DTO -> Entity konverzija sa trenutnim korisnikom
             Video video = new Video(dto.getTitle(), dto.getDescription(),
-                    dto.getTags(), currentUser.getId()); // ✅ Koristi ID trenutnog korisnika
+                    dto.getTags(), currentUser.getId()); //  Koristi ID trenutnog korisnika
             video.setLocation(dto.getLocation());
 
             logger.info("Pokušavam da sačuvam video: {}", video.getTitle());
@@ -122,7 +115,7 @@ public class VideoController {
             return new ResponseEntity<>(savedVideo, HttpStatus.CREATED);
 
         } catch (RuntimeException re) {
-            // ✅ Hvataj autentifikacione greške
+
             logger.error("Greška sa autentifikacijom", re);
             return new ResponseEntity<>(re.getMessage(), HttpStatus.UNAUTHORIZED);
 
@@ -160,7 +153,6 @@ public class VideoController {
         return new ResponseEntity<>(videos, HttpStatus.OK);
     }
 
-    // GET - Jedan video (JAVNO)
     @GetMapping(value = "/{id}")
     public ResponseEntity<Video> getVideo(@PathVariable Long id) {
         logger.info("Dobavljanje videa sa ID: {}", id);
@@ -171,7 +163,6 @@ public class VideoController {
         return new ResponseEntity<>(video, HttpStatus.OK);
     }
 
-    // GET - Thumbnail (JAVNO)
     @GetMapping(value = "/{id}/thumbnail", produces = MediaType.IMAGE_JPEG_VALUE)
     public ResponseEntity<byte[]> getThumbnail(@PathVariable Long id) {
         try {
@@ -186,7 +177,7 @@ public class VideoController {
         }
     }
 
-    // GET - Video fajl (JAVNO)
+
     @GetMapping(value = "/{id}/video")
     public ResponseEntity<byte[]> getVideoFile(@PathVariable Long id) {
         try {
@@ -204,7 +195,7 @@ public class VideoController {
         }
     }
 
-    // GET - Health check
+
     @GetMapping(value = "/health")
     public ResponseEntity<String> health() {
         return ResponseEntity.ok("Video service is running");
@@ -295,5 +286,49 @@ public class VideoController {
         } catch (RuntimeException e) {
             return ResponseEntity.ok(false);
         }
+    }
+
+    @PostMapping("/{id}/view")
+    public ResponseEntity<?> recordView(@PathVariable Long id) {
+        try {
+            User currentUser = getCurrentUser();
+            Video video = videoService.findById(id);
+
+            if (video == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body("Video nije pronađen");
+            }
+
+            videoService.recordView(id, currentUser.getId());
+
+            long viewCount = videoService.getViewCount(id);
+
+            logger.info("View registrovan: korisnik {} pogledao video {}. Ukupno: {}",
+                    currentUser.getId(), id, viewCount);
+
+            return ResponseEntity.ok()
+                    .body("View registrovan. Ukupno pregleda: " + viewCount);
+
+        } catch (RuntimeException e) {
+            logger.error("Greška pri registrovanju view-a", e);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(e.getMessage());
+        }
+    }
+
+
+
+    @GetMapping("/{id}/views/count")
+    public ResponseEntity<Long> getViewCount(@PathVariable Long id) {
+        Video video = videoService.findById(id);
+
+        if (video == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
+
+        long viewCount = videoService.getViewCount(id);
+        logger.info("View count za video {}: {}", id, viewCount);
+
+        return ResponseEntity.ok(viewCount);
     }
 }

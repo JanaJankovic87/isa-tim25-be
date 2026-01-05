@@ -44,6 +44,7 @@ public class Video implements Serializable {
     @Column(name = "user_id")
     private Long userId;
 
+
     @Version
     private Integer version;
 
@@ -139,6 +140,8 @@ public class Video implements Serializable {
     public void setVersion(Integer version) {
         this.version = version;
     }
+
+    
 
     @Override
     public String toString() {
