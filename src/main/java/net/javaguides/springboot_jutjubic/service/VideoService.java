@@ -34,4 +34,7 @@ public interface VideoService {
     boolean isVideoLikedByUser(Long videoId, Long userId);
 
     long getLikesCount(Long videoId);
+
+    List<Video> findByUserId(Long userId);
+
 }

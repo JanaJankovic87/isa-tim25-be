@@ -278,6 +278,11 @@ public class VideoServiceImpl implements VideoService {
     public long getLikesCount(Long videoId) {
         return videoLikeRepository.countByVideoId(videoId);
     }
+
+    @Override
+    public List<Video> findByUserId(Long userId) {
+        return videoRepository.findByUserId(userId);
+    }
 }
 
 
