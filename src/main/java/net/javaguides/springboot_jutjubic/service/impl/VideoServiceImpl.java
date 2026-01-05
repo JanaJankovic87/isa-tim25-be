@@ -13,8 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import net.javaguides.springboot_jutjubic.model.Video;
+import net.javaguides.springboot_jutjubic.model.VideoView;
 import net.javaguides.springboot_jutjubic.repository.VideoRepository;
 import net.javaguides.springboot_jutjubic.repository.VideoLikeRepository;
+import net.javaguides.springboot_jutjubic.repository.VideoViewRepository;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -32,6 +34,9 @@ public class VideoServiceImpl implements VideoService {
 
     @Autowired
     private VideoLikeRepository videoLikeRepository;
+
+    @Autowired
+    private VideoViewRepository videoViewRepository;
 
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
@@ -282,6 +287,50 @@ public class VideoServiceImpl implements VideoService {
     @Override
     public List<Video> findByUserId(Long userId) {
         return videoRepository.findByUserId(userId);
+    }
+
+    @Override
+    @Transactional
+    public void recordView(Long videoId, Long userId) {
+        try {
+            // 1. Pronađi video
+            Video video = videoRepository.findById(videoId)
+                    .orElseThrow(() -> new RuntimeException("Video sa ID " + videoId + " nije pronađen"));
+
+            // 2. Proveri da li je korisnik AUTOR videa
+            if (video.getUserId().equals(userId)) {
+                logger.info("Korisnik {} je AUTOR videa {} - view se NE registruje", userId, videoId);
+                return;
+            }
+
+            // 3. Proveri da li je korisnik VEĆ GLEDAO ovaj video
+            if (videoViewRepository.existsByUserIdAndVideoId(userId, videoId)) {
+                logger.info("Korisnik {} je VEĆ gledao video {} - view se NE registruje", userId, videoId);
+                return;
+            }
+
+            // 4. Sačuvaj zapis da je korisnik pogledao video
+            VideoView view = new VideoView(userId, videoId);
+            videoViewRepository.save(view);
+
+            logger.info("Registrovan view: korisnik {} pogledao video {}", userId, videoId);
+
+        } catch (Exception e) {
+            logger.error("Greška pri registrovanju view-a za video {}", videoId, e);
+
+        }
+    }
+
+    @Override
+    public long getViewCount(Long videoId) {
+        try {
+            long count = videoViewRepository.countByVideoId(videoId);
+            logger.info("Video {} ima {} pregleda", videoId, count);
+            return count;
+        } catch (Exception e) {
+            logger.error("Greška pri brojanju view-ova za video {}", videoId, e);
+            return 0L;
+        }
     }
 }
 

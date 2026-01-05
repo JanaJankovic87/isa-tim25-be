@@ -37,4 +37,8 @@ public interface VideoService {
 
     List<Video> findByUserId(Long userId);
 
+    void recordView(Long videoId, Long userId);
+
+    long getViewCount(Long videoId);
+
 }
