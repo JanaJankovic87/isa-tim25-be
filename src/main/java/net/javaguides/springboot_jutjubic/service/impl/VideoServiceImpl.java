@@ -332,6 +332,10 @@ public class VideoServiceImpl implements VideoService {
             return 0L;
         }
     }
+    @Override
+    public List<Video> findAllSortedByDate() {
+        return videoRepository.findAllByOrderByCreatedAtDesc();
+    }
 }
 
 

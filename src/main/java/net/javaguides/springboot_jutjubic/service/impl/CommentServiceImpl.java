@@ -57,9 +57,6 @@
             Comment comment = new Comment(commentDTO.getText(), user, video);
             Comment savedComment = commentRepository.save(comment);
 
-
-            rateLimitService.recordComment(userId);
-
             return convertToDTO(savedComment);
         }
 
@@ -70,20 +67,7 @@
             return comments.map(this::convertToDTO);
         }
 
-        @Override
-        @Transactional
-        @CacheEvict(value = "videoComments", allEntries = true)
-        public void deleteComment(Long commentId, Long userId) {
-            Comment comment = commentRepository.findById(commentId)
-                    .orElseThrow(() -> new RuntimeException("Comment not found"));
 
-
-            if (!comment.getUser().getId().equals(userId)) {
-                throw new RuntimeException("You can only delete your own comments");
-            }
-
-            commentRepository.delete(comment);
-        }
 
         private CommentDTO convertToDTO(Comment comment) {
             return new CommentDTO(

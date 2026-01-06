@@ -28,9 +28,4 @@ public class CommentRateLimitServiceImpl implements CommentRateLimitService {
         long commentCount = commentRepository.countUserCommentsInLastHour(userId, oneHourAgo);
         return (int) Math.max(0, MAX_COMMENTS_PER_HOUR - commentCount);
     }
-
-    @Override
-    public void recordComment(Long userId) {
-
-    }
 }

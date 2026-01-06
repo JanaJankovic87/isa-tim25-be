@@ -14,10 +14,10 @@ public class CommentDTO {
 
     private Long userId;
     private String username;
-    private String firstName;  // DODAJ
-    private String lastName;   // DODAJ
+    private String firstName;
+    private String lastName;
     private LocalDateTime createdAt;
-    private Long videoId;      // DODAJ
+    private Long videoId;
 
     public CommentDTO() {}
 
@@ -33,7 +33,7 @@ public class CommentDTO {
         this.videoId = videoId;
     }
 
-    // Getters and Setters
+
     public Long getId() {
         return id;
     }
