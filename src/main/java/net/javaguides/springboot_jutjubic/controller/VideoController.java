@@ -148,8 +148,8 @@ public class VideoController {
     // GET - Lista videa (JAVNO)
     @GetMapping(value = "/")
     public ResponseEntity<List<Video>> getVideos() {
-        logger.info("Dobavljanje svih videa");
-        List<Video> videos = videoService.findAll();
+        logger.info("Dobavljanje svih videa sortiranih po datumu");
+        List<Video> videos = videoService.findAllSortedByDate();
         return new ResponseEntity<>(videos, HttpStatus.OK);
     }
 
@@ -229,7 +229,7 @@ public class VideoController {
         } catch (RuntimeException e) {
             logger.error("Greška pri lajkovanju videa", e);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(e.getMessage());
+                    .body("You must be logged in to like videos");
         }
     }
 
@@ -254,7 +254,7 @@ public class VideoController {
         } catch (RuntimeException e) {
             logger.error("Greška pri uklanjanju lajka", e);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(e.getMessage());
+                    .body("You must be logged in to unlike videos");
         }
     }
 
@@ -312,7 +312,7 @@ public class VideoController {
         } catch (RuntimeException e) {
             logger.error("Greška pri registrovanju view-a", e);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(e.getMessage());
+                    .body("You must be logged in to record views");
         }
     }
 

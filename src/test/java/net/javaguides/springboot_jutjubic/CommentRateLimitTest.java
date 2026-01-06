@@ -97,7 +97,7 @@ public class CommentRateLimitTest {
                 comment.setCreatedAt(LocalDateTime.now());
                 commentRepository.save(comment);
 
-                rateLimitService.recordComment(testUser.getId());
+
 
                 successfulComments++;
                 System.out.println("Komentar " + i + " uspešno poslat.");
@@ -137,7 +137,7 @@ public class CommentRateLimitTest {
                 comment.setCreatedAt(LocalDateTime.now());
                 commentRepository.save(comment);
 
-                rateLimitService.recordComment(testUser.getId());
+
                 totalSuccessful++;
             } catch (RuntimeException e) {
                 totalFailed++;
@@ -157,7 +157,7 @@ public class CommentRateLimitTest {
                 comment.setCreatedAt(LocalDateTime.now());
                 commentRepository.save(comment);
 
-                rateLimitService.recordComment(testUser.getId());
+
                 totalSuccessful++;
             } catch (RuntimeException e) {
                 totalFailed++;
@@ -178,7 +178,7 @@ public class CommentRateLimitTest {
                 comment.setCreatedAt(LocalDateTime.now());
                 commentRepository.save(comment);
 
-                rateLimitService.recordComment(testUser.getId());
+
                 totalSuccessful++;
             } catch (RuntimeException e) {
                 totalFailed++;
@@ -225,7 +225,7 @@ public class CommentRateLimitTest {
                 comment.setCreatedAt(LocalDateTime.now());
                 commentRepository.save(comment);
 
-                rateLimitService.recordComment(testUser.getId());
+
                 successful++;
             } catch (RuntimeException e) {
                 failed++;
@@ -277,7 +277,7 @@ public class CommentRateLimitTest {
             comment.setCreatedAt(LocalDateTime.now());
             commentRepository.save(comment);
 
-            rateLimitService.recordComment(testUser.getId());
+
         } catch (RuntimeException e) {
             fail("Komentar treba da bude dozvoljen nakon reseta: " + e.getMessage());
         }

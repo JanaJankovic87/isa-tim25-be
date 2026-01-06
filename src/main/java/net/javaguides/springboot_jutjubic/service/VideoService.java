@@ -40,5 +40,6 @@ public interface VideoService {
     void recordView(Long videoId, Long userId);
 
     long getViewCount(Long videoId);
+    List<Video> findAllSortedByDate();
 
 }

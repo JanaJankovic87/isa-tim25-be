@@ -71,8 +71,11 @@ public class WebSecurityConfig {
                 .requestMatchers("/error").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/videos/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/videos/*/comments/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/users/*/profile").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/videos/*/comments").authenticated()
-                .requestMatchers(HttpMethod.DELETE, "/api/videos/*/comments/*").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/videos/*/like").authenticated()
+                .requestMatchers(HttpMethod.DELETE, "/api/videos/*/like").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/videos/*/view").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/videos/**").authenticated()
                 .anyRequest().authenticated()
         );

@@ -7,5 +7,4 @@ import org.springframework.data.domain.Pageable;
 public interface CommentService {
     CommentDTO createComment(Long videoId, CommentDTO commentDTO, Long userId);
     Page<CommentDTO> getCommentsByVideoId(Long videoId, Pageable pageable);
-    void deleteComment(Long commentId, Long userId);
 }

@@ -76,8 +76,8 @@ public class CommentController {
         } catch (RuntimeException e) {
             logger.error("Error creating comment", e);
             Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            error.put("error", "You must be logged in to comment");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
         }
     }
 
@@ -100,22 +100,7 @@ public class CommentController {
         }
     }
 
-    @DeleteMapping("/{commentId}")
-    public ResponseEntity<?> deleteComment(
-            @PathVariable Long videoId,
-            @PathVariable Long commentId) {
 
-        try {
-            User currentUser = getCurrentUser();
-            commentService.deleteComment(commentId, currentUser.getId());
-
-            return ResponseEntity.noContent().build();
-
-        } catch (RuntimeException e) {
-            logger.error("Error deleting comment", e);
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
 
     @GetMapping("/remaining")
     public ResponseEntity<?> getRemainingComments() {

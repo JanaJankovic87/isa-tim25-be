@@ -11,6 +11,7 @@ import java.util.List;
         List<Video> findByUserId(Long userId);
         List<Video> findAll();
         List<Video> findByTitleContainingIgnoreCase(String title);
+        List<Video> findAllByOrderByCreatedAtDesc();
     }
 
 
