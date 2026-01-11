@@ -97,7 +97,7 @@ INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-48, 'Ali
 INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-49, 'The teapots and cups are so creatively designed.', '2026-01-10 17:15:00', -6, -1);
 INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-50, 'Absolute classic! Showing this to my grandkids.', '2026-01-10 17:30:00', -7, -1);
 
-INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-1, -2, -1, '2026-01-10 10:45:00');
+INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-1, -2, -1, '2026-01-10 10:50:00');
 INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-2, -3, -1, '2026-01-10 10:50:00');
 INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-3, -4, -1, '2026-01-10 11:00:00');
 INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-4, -5, -1, '2026-01-10 11:10:00');
