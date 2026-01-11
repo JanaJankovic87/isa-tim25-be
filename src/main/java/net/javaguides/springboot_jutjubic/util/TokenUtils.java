@@ -27,7 +27,7 @@ public class TokenUtils {
     @Value("${jwt.secret}")
     private String SECRET;
 
-    @Value("${jwt.expires-in.web:1800000}")
+    @Value("${jwt.expires-in.web:120000}")
     private int EXPIRES_IN_WEB;
 
     @Value("${jwt.expires-in.mobile:604800000}")

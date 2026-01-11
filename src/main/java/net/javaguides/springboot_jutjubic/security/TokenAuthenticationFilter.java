@@ -28,34 +28,43 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
-    public void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain chain)
             throws IOException, ServletException {
 
-        String username = null;
         String authToken = tokenUtils.getToken(request);
 
         try {
             if (authToken != null) {
-                username = tokenUtils.getUsernameFromToken(authToken);
+                String username = tokenUtils.getUsernameFromToken(authToken);
 
                 if (username != null) {
-                    try {
-                        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                        if (tokenUtils.validateToken(authToken, userDetails)) {
-                            TokenBasedAuthentication authentication = new TokenBasedAuthentication(userDetails);
-                            authentication.setToken(authToken);
-                            SecurityContextHolder.getContext().setAuthentication(authentication);
-                        }
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
+                    if (tokenUtils.validateToken(authToken, userDetails)) {
+                        TokenBasedAuthentication authentication =
+                                new TokenBasedAuthentication(userDetails);
+                        authentication.setToken(authToken);
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
                     }
                 }
             }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
 
-        chain.doFilter(request, response);
+            chain.doFilter(request, response);
+
+        } catch (ExpiredJwtException e) {
+
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\":\"JWT_EXPIRED\"}");
+
+        } catch (Exception e) {
+
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\":\"INVALID_TOKEN\"}");
+        }
     }
+
 }
