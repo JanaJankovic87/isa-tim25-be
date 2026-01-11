@@ -54,6 +54,27 @@ INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-7, 'Lotu
 -- Dodatni komentar na video -1
 INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-8, 'I watch this movie every year. It never gets old!', '2026-01-10 14:00:00', -5, -2);
 
+-- Dodatni komentari za video -1 (Mad Hatter's Tea Party) - ukupno 21 komentar, samo jedan od autora videa (-1)
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-9, 'Thanks everyone for watching! This scene is my favorite from the movie.', '2026-01-10 10:35:00', -1, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-10, 'The Mad Hatter is such a quirky character!', '2026-01-10 12:30:00', -2, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-11, 'Love the colors in this scene!', '2026-01-10 12:45:00', -3, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-12, 'Classic Disney magic!', '2026-01-10 13:00:00', -4, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-13, 'This brings back childhood memories.', '2026-01-10 13:15:00', -7, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-14, 'The tea party scene never gets old!', '2026-01-10 13:30:00', -2, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-15, 'Wonderland is so imaginative!', '2026-01-10 13:45:00', -3, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-16, 'I watch this every year.', '2026-01-10 14:00:00', -4, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-17, 'Best scene in the whole movie!', '2026-01-10 14:15:00', -5, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-18, 'The animation is incredible for its time.', '2026-01-10 14:30:00', -6, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-19, 'March Hare is hilarious!', '2026-01-10 14:45:00', -7, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-20, 'Disney at its finest.', '2026-01-10 15:00:00', -2, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-21, 'I love the whimsical nature of this scene.', '2026-01-10 15:15:00', -3, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-22, 'Perfect capture of Lewis Carroll''s vision!', '2026-01-10 15:30:00', -4, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-23, 'The music in this scene is fantastic!', '2026-01-10 15:45:00', -5, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-24, 'A very merry unbirthday to you!', '2026-01-10 16:00:00', -6, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-25, 'This scene defined my childhood.', '2026-01-10 16:15:00', -7, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-26, 'A very merry unbirthday to you!', '2026-01-10 16:00:00', -6, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-27, 'This scene defined my childhood.', '2026-01-10 16:15:00', -7, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-28, 'This scene defined my childhood.', '2026-01-10 16:15:00', -7, -1);
 -- Video pregledi
 INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-1, -2, -1, '2026-01-10 10:45:00');
 INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-2, -3, -1, '2026-01-10 10:50:00');
@@ -76,7 +97,7 @@ INSERT INTO video_likes (id, user_id, video_id, liked_at) VALUES (-2, -3, -1, '2
 INSERT INTO video_likes (id, user_id, video_id, liked_at) VALUES (-3, -4, -1, '2026-01-10 11:05:00');
 INSERT INTO video_likes (id, user_id, video_id, liked_at) VALUES (-4, -5, -1, '2026-01-10 11:15:00');
 INSERT INTO video_likes (id, user_id, video_id, liked_at) VALUES (-5, -7, -1, '2026-01-10 11:25:00');
-INSERT INTO video_likes (id, user_id, video_id, liked_at) VALUES (-6, -2, -2, '2026-01-10 11:35:00');
+INSERT INTO video_likes (id, user_id, video_id, laid_at) VALUES (-6, -2, -2, '2026-01-10 11:35:00');
 INSERT INTO video_likes (id, user_id, video_id, liked_at) VALUES (-7, -3, -2, '2026-01-10 11:50:00');
 INSERT INTO video_likes (id, user_id, video_id, liked_at) VALUES (-8, -6, -2, '2026-01-10 12:05:00');
 INSERT INTO video_likes (id, user_id, video_id, liked_at) VALUES (-9, -2, -3, '2026-01-10 12:35:00');
