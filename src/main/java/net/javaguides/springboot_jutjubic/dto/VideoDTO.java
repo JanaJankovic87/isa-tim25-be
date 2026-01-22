@@ -1,36 +1,72 @@
 package net.javaguides.springboot_jutjubic.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-
+import java.time.LocalDateTime;
 import java.util.List;
 
 public class VideoDTO {
 
-    @NotBlank(message = "Title is required")
-    @Size(min = 3, max = 100, message = "Title must be between 3 and 100 characters")
+    private Long id;
     private String title;
-
-    @NotBlank(message = "Description is required")
-    @Size(min = 10, max = 1000, message = "Description must be between 10 and 1000 characters")
     private String description;
-
-    @NotEmpty(message = "At least one tag is required")
     private List<String> tags;
+    private String thumbnailPath;
+    private String videoPath;
+    private LocalDateTime createdAt;
 
-    @Size(max = 255, message = "Location must not exceed 255 characters")
+    // Geolocation fields (NOVO za S2)
     private String location;
+    private Double latitude;
+    private Double longitude;
+    private Boolean isLocationApproximated;
 
-    @NotNull(message = "User ID is required")
     private Long userId;
+    private String username; // Ako treba prikazati ko je postavio
 
+    // Statistics (opciono)
+    private Long viewCount;
+    private Long likeCount;
+    private Long commentCount;
+
+    private Integer version;
+
+    // Constructors
     public VideoDTO() {
-        super();
+    }
+
+    public VideoDTO(Long id, String title, String description) {
+        this.id = id;
+        this.title = title;
+        this.description = description;
+    }
+
+    // Full constructor
+    public VideoDTO(Long id, String title, String description, List<String> tags,
+                    String thumbnailPath, String videoPath, LocalDateTime createdAt,
+                    String location, Double latitude, Double longitude,
+                    Boolean isLocationApproximated, Long userId) {
+        this.id = id;
+        this.title = title;
+        this.description = description;
+        this.tags = tags;
+        this.thumbnailPath = thumbnailPath;
+        this.videoPath = videoPath;
+        this.createdAt = createdAt;
+        this.location = location;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.isLocationApproximated = isLocationApproximated;
+        this.userId = userId;
     }
 
     // Getters and Setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
     public String getTitle() {
         return title;
     }
@@ -55,6 +91,30 @@ public class VideoDTO {
         this.tags = tags;
     }
 
+    public String getThumbnailPath() {
+        return thumbnailPath;
+    }
+
+    public void setThumbnailPath(String thumbnailPath) {
+        this.thumbnailPath = thumbnailPath;
+    }
+
+    public String getVideoPath() {
+        return videoPath;
+    }
+
+    public void setVideoPath(String videoPath) {
+        this.videoPath = videoPath;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
     public String getLocation() {
         return location;
     }
@@ -63,11 +123,95 @@ public class VideoDTO {
         this.location = location;
     }
 
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+    }
+
+    public Boolean getIsLocationApproximated() {
+        return isLocationApproximated;
+    }
+
+    public void setIsLocationApproximated(Boolean isLocationApproximated) {
+        this.isLocationApproximated = isLocationApproximated;
+    }
+
     public Long getUserId() {
         return userId;
     }
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public Long getViewCount() {
+        return viewCount;
+    }
+
+    public void setViewCount(Long viewCount) {
+        this.viewCount = viewCount;
+    }
+
+    public Long getLikeCount() {
+        return likeCount;
+    }
+
+    public void setLikeCount(Long likeCount) {
+        this.likeCount = likeCount;
+    }
+
+    public Long getCommentCount() {
+        return commentCount;
+    }
+
+    public void setCommentCount(Long commentCount) {
+        this.commentCount = commentCount;
+    }
+
+    public Integer getVersion() {
+        return version;
+    }
+
+    public void setVersion(Integer version) {
+        this.version = version;
+    }
+
+    @Override
+    public String toString() {
+        return "VideoDTO{" +
+                "id=" + id +
+                ", title='" + title + '\'' +
+                ", description='" + description + '\'' +
+                ", tags=" + tags +
+                ", location='" + location + '\'' +
+                ", latitude=" + latitude +
+                ", longitude=" + longitude +
+                ", isLocationApproximated=" + isLocationApproximated +
+                ", userId=" + userId +
+                ", username='" + username + '\'' +
+                ", viewCount=" + viewCount +
+                ", likeCount=" + likeCount +
+                ", commentCount=" + commentCount +
+                ", createdAt=" + createdAt +
+                '}';
     }
 }
