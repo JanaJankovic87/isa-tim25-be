@@ -41,12 +41,23 @@ public class Video implements Serializable {
     @Column(name = "location")
     private String location;
 
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
+    @Column(name = "is_location_approximated")
+    private Boolean isLocationApproximated = false;
+
     @Column(name = "user_id")
     private Long userId;
 
-
     @Version
     private Integer version;
+
+    @OneToMany(mappedBy = "video", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Comment> comments = new ArrayList<>();
 
     public Video() {
         super();
@@ -61,6 +72,7 @@ public class Video implements Serializable {
         this.createdAt = LocalDateTime.now();
     }
 
+    // Getters and Setters
     public Long getId() {
         return id;
     }
@@ -125,6 +137,30 @@ public class Video implements Serializable {
         this.location = location;
     }
 
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+    }
+
+    public Boolean getIsLocationApproximated() {
+        return isLocationApproximated;
+    }
+
+    public void setIsLocationApproximated(Boolean isLocationApproximated) {
+        this.isLocationApproximated = isLocationApproximated;
+    }
+
     public Long getUserId() {
         return userId;
     }
@@ -141,19 +177,6 @@ public class Video implements Serializable {
         this.version = version;
     }
 
-    
-
-    @Override
-    public String toString() {
-        return "VideoPost [id=" + id + ", title=" + title + ", userId=" + userId +
-                ", createdAt=" + createdAt + ", version=" + version + "]";
-    }
-
-
-    @OneToMany(mappedBy = "video", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Comment> comments = new ArrayList<>();
-
-
     public List<Comment> getComments() {
         return comments;
     }
@@ -162,4 +185,10 @@ public class Video implements Serializable {
         this.comments = comments;
     }
 
+    @Override
+    public String toString() {
+        return "Video [id=" + id + ", title=" + title + ", userId=" + userId +
+                ", createdAt=" + createdAt + ", latitude=" + latitude +
+                ", longitude=" + longitude + ", version=" + version + "]";
+    }
 }
