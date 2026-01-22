@@ -1,5 +1,6 @@
 package net.javaguides.springboot_jutjubic.service.impl;
 
+import net.javaguides.springboot_jutjubic.dto.TrendingVideoDTO;
 import net.javaguides.springboot_jutjubic.model.VideoLike;
 import net.javaguides.springboot_jutjubic.service.VideoService;
 import org.slf4j.Logger;
@@ -23,6 +24,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -336,6 +339,51 @@ public class VideoServiceImpl implements VideoService {
     public List<Video> findAllSortedByDate() {
         return videoRepository.findAllByOrderByCreatedAtDesc();
     }
+
+    @Override
+    public double calculateTrendingScore(Video video) {
+
+        long views = getViewCount(video.getId());
+        long likes = getLikesCount(video.getId());
+        int comments = video.getComments().size();
+
+        long hoursSinceUpload = ChronoUnit.HOURS
+                .between(video.getCreatedAt(), LocalDateTime.now());
+
+        double freshness = 1.0 / (1 + hoursSinceUpload);
+
+        return views * 0.4
+                + likes * 0.3
+                + comments * 0.2
+                + freshness * 0.1;
+    }
+
+    @Override
+    public List<TrendingVideoDTO> getTrendingVideos() {
+
+        List<Video> videos = findAll();
+        List<TrendingVideoDTO> trendingList = new ArrayList<>();
+
+        for (Video video : videos) {
+            double score = calculateTrendingScore(video);
+            trendingList.add(new TrendingVideoDTO(video, score));
+        }
+
+        Collections.sort(trendingList, new Comparator<TrendingVideoDTO>() {
+            @Override
+            public int compare(TrendingVideoDTO a, TrendingVideoDTO b) {
+                return Double.compare(b.getTrendingScore(), a.getTrendingScore());
+            }
+        });
+
+        List<TrendingVideoDTO> result = new ArrayList<>();
+        for (int i = 0; i < trendingList.size() && i < 5; i++) {
+            result.add(trendingList.get(i));
+        }
+
+        return result;
+    }
+
 }
 
 

@@ -1,5 +1,6 @@
 package net.javaguides.springboot_jutjubic.service;
 
+import net.javaguides.springboot_jutjubic.dto.TrendingVideoDTO;
 import net.javaguides.springboot_jutjubic.model.Video;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.multipart.MultipartFile;
@@ -41,5 +42,9 @@ public interface VideoService {
 
     long getViewCount(Long videoId);
     List<Video> findAllSortedByDate();
+
+    double calculateTrendingScore(Video video);
+
+    List<TrendingVideoDTO> getTrendingVideos();
 
 }
