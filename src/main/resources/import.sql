@@ -1,12 +1,15 @@
 INSERT INTO ROLE (id, name) VALUES (1, 'ROLE_USER');
 INSERT INTO ROLE (id, name) VALUES (2, 'ROLE_ADMIN');
-INSERT INTO ADDRESS (id, street, city, postal_code, country) VALUES (-1, 'Bulevar kralja Aleksandra 73', 'Beograd', '11000', 'Serbia');
-INSERT INTO ADDRESS (id, street, city, postal_code, country) VALUES (-2, 'Kralja Petra 15', 'Novi Sad', '21000', 'Serbia');
-INSERT INTO ADDRESS (id, street, city, postal_code, country) VALUES (-3, 'Trg Republike 5', 'Beograd', '11000', 'Serbia');
-INSERT INTO ADDRESS (id, street, city, postal_code, country) VALUES (-4, 'Dunavska 22', 'Novi Sad', '21000', 'Serbia');
-INSERT INTO ADDRESS (id, street, city, postal_code, country) VALUES (-5, 'Knez Mihailova 10', 'Beograd', '11000', 'Serbia');
-INSERT INTO ADDRESS (id, street, city, postal_code, country) VALUES (-6, 'Zmaj Jovina 8', 'Novi Sad', '21000', 'Serbia');
-INSERT INTO ADDRESS (id, street, city, postal_code, country) VALUES (-7, 'Makedonska 30', 'Beograd', '11000', 'Serbia');
+
+-- ADDRESS sa koordinatama za Srbiju
+INSERT INTO ADDRESS (id, street, city, postal_code, country, latitude, longitude) VALUES (-1, 'Bulevar kralja Aleksandra 73', 'Beograd', '11000', 'Serbia', 44.7866, 20.4489);
+INSERT INTO ADDRESS (id, street, city, postal_code, country, latitude, longitude) VALUES (-2, 'Kralja Petra 15', 'Novi Sad', '21000', 'Serbia', 45.2671, 19.8335);
+INSERT INTO ADDRESS (id, street, city, postal_code, country, latitude, longitude) VALUES (-3, 'Trg Republike 5', 'Beograd', '11000', 'Serbia', 44.7866, 20.4489);
+INSERT INTO ADDRESS (id, street, city, postal_code, country, latitude, longitude) VALUES (-4, 'Dunavska 22', 'Novi Sad', '21000', 'Serbia', 45.2671, 19.8335);
+INSERT INTO ADDRESS (id, street, city, postal_code, country, latitude, longitude) VALUES (-5, 'Knez Mihailova 10', 'Beograd', '11000', 'Serbia', 44.7866, 20.4489);
+INSERT INTO ADDRESS (id, street, city, postal_code, country, latitude, longitude) VALUES (-6, 'Zmaj Jovina 8', 'Novi Sad', '21000', 'Serbia', 45.2671, 19.8335);
+INSERT INTO ADDRESS (id, street, city, postal_code, country, latitude, longitude) VALUES (-7, 'Makedonska 30', 'Beograd', '11000', 'Serbia', 44.7866, 20.4489);
+
 INSERT INTO USERS (id, username, password, first_name, last_name, email, address_id, enabled, is_verified, last_password_reset_date) VALUES (-1, 'testuser', '$2a$10$.t.87y6mejycgrHaXKCS..2FOHbgMD0gzWSfnziZ1MsxvAlg88fTO', 'Test', 'User', 'test@example.com', -1, true, true, NOW());
 INSERT INTO USERS (id, username, password, first_name, last_name, email, address_id, enabled, is_verified, last_password_reset_date) VALUES (-2, 'oscar', '$2a$10$.t.87y6mejycgrHaXKCS..2FOHbgMD0gzWSfnziZ1MsxvAlg88fTO', 'Oscar', 'Brewer', 'admin@example.com', -2, true, true, NOW());
 INSERT INTO USERS (id, username, password, first_name, last_name, email, address_id, enabled, is_verified, last_password_reset_date) VALUES (-3, 'the_mapmaker', '$2a$10$.t.87y6mejycgrHaXKCS..2FOHbgMD0gzWSfnziZ1MsxvAlg88fTO', 'Liam', 'Mapmaker', 'marko.markovic@example.com', -3, true, true, NOW());
@@ -14,6 +17,7 @@ INSERT INTO USERS (id, username, password, first_name, last_name, email, address
 INSERT INTO USERS (id, username, password, first_name, last_name, email, address_id, enabled, is_verified, last_password_reset_date) VALUES (-5, 'mike_fisherman', '$2a$10$.t.87y6mejycgrHaXKCS..2FOHbgMD0gzWSfnziZ1MsxvAlg88fTO', 'Mike', 'Fisherman', 'disabled@example.com', -5, false, true, NOW());
 INSERT INTO USERS (id, username, password, first_name, last_name, email, address_id, enabled, is_verified, last_password_reset_date) VALUES (-6, 'david_cooper', '$2a$10$.t.87y6mejycgrHaXKCS..2FOHbgMD0gzWSfnziZ1MsxvAlg88fTO', 'David', 'Cooper', 'unverified@example.com', -6, true, false, NOW());
 INSERT INTO USERS (id, username, password, first_name, last_name, email, address_id, enabled, is_verified, last_password_reset_date) VALUES (-7, 'jova', '$2a$10$.t.87y6mejycgrHaXKCS..2FOHbgMD0gzWSfnziZ1MsxvAlg88fTO', 'Jovan', 'Jović', 'jovan.jovic@example.com', -7, true, true, NOW());
+
 INSERT INTO USER_ROLE (user_id, role_id) VALUES (-1, 1);
 INSERT INTO USER_ROLE (user_id, role_id) VALUES (-2, 2);
 INSERT INTO USER_ROLE (user_id, role_id) VALUES (-2, 1);
@@ -24,14 +28,15 @@ INSERT INTO USER_ROLE (user_id, role_id) VALUES (-6, 1);
 INSERT INTO USER_ROLE (user_id, role_id) VALUES (-7, 1);
 
 
-INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, created_at, location, user_id, version) VALUES (-1, 'Mad Hatter''s Tea Party', 'Alice in Wonderland, famous tea party scene', 'uploads/thumbnails/alice.jpg', 'uploads/videos/alice.mp4', '2026-01-10 10:30:40', '', -1, 0);
-INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, created_at, location, user_id, version) VALUES (-2, 'My Neighbor Totoro', 'Hayao Miyazaki''s classic animated film about two sisters who move to the countryside and encounter magical creatures.', 'uploads/thumbnails/totoro.jpg', 'uploads/videos/totoro.mp4', '2026-01-07 18:14:12', '', -2, 0);
-INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, created_at, location, user_id, version) VALUES (-3, 'Lilies', 'Water lilies caught in a rain', 'uploads/thumbnails/ren.jpg', 'uploads/videos/ren.mp4', '2016-12-27 12:58:13', '', -3, 0);
-INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, created_at, location, user_id, version) VALUES (-4, 'Ponyo', 'Sosuke rescues a goldfish trapped in a bottle. The goldfish, who is the daughter of a wizard, transforms herself into a young girl with her father''s magic and falls in love with Sosuke.', 'uploads/thumbnails/ponyo.gif', 'uploads/videos/ponyo.mp4', '2018-08-25 12:58:13', '', -2, 0);
-INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, created_at, location, user_id, version) VALUES (-5, 'Bratz', 'Iconic opening theme.', 'uploads/thumbnails/bratz.jpg', 'uploads/videos/bratz.mp4', '2021-04-07 12:35:01', '', -7, 0);
-INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, created_at, location, user_id, version) VALUES (-6, 'Harry Potter', 'Sorting Hat scene', 'uploads/thumbnails/harry.gif', 'uploads/videos/harry.mp4', '2025-10-10 12:00:13', '', -5, 0);
-INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, created_at, location, user_id, version) VALUES (-7, 'yellow garden', 'cat on a sunny day', 'uploads/thumbnails/cat.gif', 'uploads/videos/cat.mp4', '2025-09-10 14:00:13', '', -3, 0);
-INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, created_at, location, user_id, version) VALUES (-8, 'Pixar''s Up', 'Carl, an old widower, goes off on an adventure with the help of Russell, a boy scout, in his flying house to search for Paradise Falls, his wife''s dream destination.', 'uploads/thumbnails/up.gif', 'uploads/videos/up.mp4', '2025-06-03 13:15:01', '', -6, 0);
+-- VIDEO_POSTS sa koordinatama (fokus na Srbiju za local trending)
+INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, created_at, location, user_id, version, latitude, longitude, is_location_approximated) VALUES (-1, 'Mad Hatter''s Tea Party', 'Alice in Wonderland, famous tea party scene', 'uploads/thumbnails/alice.jpg', 'uploads/videos/alice.mp4', '2026-01-10 10:30:40', 'Novi Sad, Serbia', -1, 0, 45.2671, 19.8335, true);
+INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, created_at, location, user_id, version, latitude, longitude, is_location_approximated) VALUES (-2, 'My Neighbor Totoro', 'Hayao Miyazaki''s classic animated film about two sisters who move to the countryside and encounter magical creatures.', 'uploads/thumbnails/totoro.jpg', 'uploads/videos/totoro.mp4', '2026-01-07 18:14:12', 'Beograd, Serbia', -2, 0, 44.7866, 20.4489, true);
+INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, created_at, location, user_id, version, latitude, longitude, is_location_approximated) VALUES (-3, 'Lilies', 'Water lilies caught in a rain', 'uploads/thumbnails/ren.jpg', 'uploads/videos/ren.mp4', '2016-12-27 12:58:13', 'Subotica, Serbia', -3, 0, 46.1005, 19.6674, true);
+INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, created_at, location, user_id, version, latitude, longitude, is_location_approximated) VALUES (-4, 'Ponyo', 'Sosuke rescues a goldfish trapped in a bottle. The goldfish, who is the daughter of a wizard, transforms herself into a young girl with her father''s magic and falls in love with Sosuke.', 'uploads/thumbnails/ponyo.gif', 'uploads/videos/ponyo.mp4', '2018-08-25 12:58:13', 'Singapore', -2, 0, 1.3521, 103.8198, true);
+INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, created_at, location, user_id, version, latitude, longitude, is_location_approximated) VALUES (-5, 'Bratz', 'Iconic opening theme.', 'uploads/thumbnails/bratz.jpg', 'uploads/videos/bratz.mp4', '2021-04-07 12:35:01', 'Novi Sad, Serbia', -7, 0, 45.2671, 19.8335, true);
+INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, created_at, location, user_id, version, latitude, longitude, is_location_approximated) VALUES (-6, 'Harry Potter', 'Sorting Hat scene', 'uploads/thumbnails/harry.gif', 'uploads/videos/harry.mp4', '2025-10-10 12:00:13', 'Edinburgh, Scotland', -5, 0, 55.9533, -3.1883, true);
+INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, created_at, location, user_id, version, latitude, longitude, is_location_approximated) VALUES (-7, 'yellow garden', 'cat on a sunny day', 'uploads/thumbnails/cat.gif', 'uploads/videos/cat.mp4', '2025-09-10 14:00:13', 'Sombor, Serbia', -3, 0, 45.7733, 19.1122, true);
+INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, created_at, location, user_id, version, latitude, longitude, is_location_approximated) VALUES (-8, 'Pixar''s Up', 'Carl, an old widower, goes off on an adventure with the help of Russell, a boy scout, in his flying house to search for Paradise Falls, his wife''s dream destination.', 'uploads/thumbnails/up.gif', 'uploads/videos/up.mp4', '2025-06-03 13:15:01', 'Novi Sad, Serbia', -6, 0, 45.2671, 19.8335, true);
 
 
 INSERT INTO video_post_tags (post_id, tag) VALUES (-1, 'alice');
@@ -63,51 +68,37 @@ INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-14, 'Sos
 INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-15, 'The ocean scenes are breathtaking.', '2026-01-10 15:45:00', -6, -4);
 INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-16, 'OMG the Bratz theme song is so nostalgic!', '2026-01-10 16:00:00', -2, -5);
 INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-17, 'This brings back so many memories from my childhood!', '2026-01-10 16:15:00', -3, -5);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-18, 'Still catchy after all these years!', '2026-01-10 16:30:00', -4, -5);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-19, 'I used to watch Bratz every day after school.', '2026-01-10 16:45:00', -6, -5);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-20, 'The Sorting Hat scene is iconic!', '2026-01-10 17:00:00', -1, -6);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-21, 'I always wondered which house I''d be in.', '2026-01-10 17:15:00', -2, -6);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-22, 'Gryffindor forever!', '2026-01-10 17:30:00', -3, -6);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-23, 'The music in this scene gives me chills.', '2026-01-10 17:45:00', -4, -6);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-24, 'Harry Potter will never get old.', '2026-01-10 18:00:00', -7, -6);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-25, 'Such a cute cat!', '2026-01-10 18:15:00', -2, -7);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-26, 'Love the yellow flowers in the background.', '2026-01-10 18:30:00', -4, -7);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-27, 'This is so peaceful to watch.', '2026-01-10 18:45:00', -5, -7);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-28, 'Cats in gardens are the best.', '2026-01-10 19:00:00', -6, -7);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-29, 'Up makes me cry every time!', '2026-01-10 19:15:00', -1, -8);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-30, 'The first 10 minutes are the most emotional in any movie.', '2026-01-10 19:30:00', -2, -8);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-31, 'Carl and Ellie''s story is beautiful.', '2026-01-10 19:45:00', -3, -8);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-32, 'Russell is such a funny character!', '2026-01-10 20:00:00', -4, -8);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-33, 'Pixar never disappoints with their storytelling.', '2026-01-10 20:15:00', -7, -8);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-34, 'The tea party scene never gets old!', '2026-01-10 13:30:00', -2, -1);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-35, 'Wonderland is so imaginative!', '2026-01-10 13:45:00', -3, -1);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-36, 'I watch this every year.', '2026-01-10 14:00:00', -4, -1);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-37, 'Best scene in the whole movie!', '2026-01-10 14:15:00', -5, -1);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-38, 'The animation is incredible for its time.', '2026-01-10 14:30:00', -6, -1);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-39, 'March Hare is hilarious!', '2026-01-10 14:45:00', -7, -1);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-40, 'Disney at its finest.', '2026-01-10 15:00:00', -2, -1);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-41, 'I love the whimsical nature of this scene.', '2026-01-10 15:15:00', -3, -1);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-42, 'Perfect capture of Lewis Carroll''s vision!', '2026-01-10 15:30:00', -4, -1);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-43, 'The music in this scene is fantastic!', '2026-01-10 15:45:00', -5, -1);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-44, 'A very merry unbirthday to you!', '2026-01-10 16:00:00', -6, -1);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-45, 'This scene defined my childhood.', '2026-01-10 16:15:00', -7, -1);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-46, 'The Mad Hatter''s riddles are so clever!', '2026-01-10 16:30:00', -2, -1);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-47, 'I could watch this scene on repeat.', '2026-01-10 16:45:00', -3, -1);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-48, 'Alice''s expressions are priceless!', '2026-01-10 17:00:00', -4, -1);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-49, 'The teapots and cups are so creatively designed.', '2026-01-10 17:15:00', -6, -1);
-INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-50, 'Absolute classic! Showing this to my grandkids.', '2026-01-10 17:30:00', -7, -1);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-18, 'I used to watch Bratz every Saturday morning!', '2026-01-10 16:30:00', -4, -5);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-19, 'The animation style is iconic.', '2026-01-10 16:45:00', -6, -5);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-20, 'This song is stuck in my head now!', '2026-01-10 17:00:00', -7, -5);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-21, 'Gryffindor! That''s where I''d be sorted.', '2026-01-10 17:15:00', -1, -6);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-22, 'The Sorting Hat ceremony is such an iconic scene.', '2026-01-10 17:30:00', -2, -6);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-23, 'I love this part of the movie!', '2026-01-10 17:50:00', -3, -6);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-24, 'Ravenclaw all the way!', '2026-01-10 18:15:00', -4, -6);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-25, 'The magic in this series is timeless.', '2026-01-10 18:30:00', -7, -6);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-26, 'What a cute cat!', '2026-01-10 18:45:00', -1, -7);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-27, 'This reminds me of my garden.', '2026-01-10 19:00:00', -2, -7);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-28, 'The lighting is perfect!', '2026-01-10 19:15:00', -4, -7);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-29, 'So peaceful and calming to watch.', '2026-01-10 19:30:00', -5, -7);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-30, 'I love cats!', '2026-01-10 19:50:00', -6, -7);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-31, 'Up is one of my all-time favorite Pixar movies!', '2026-01-10 20:00:00', -1, -8);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-32, 'The opening sequence makes me cry every time.', '2026-01-10 20:15:00', -2, -8);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-33, 'Carl and Ellie''s love story is beautiful.', '2026-01-10 20:30:00', -3, -8);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-34, 'Pixar knows how to tell emotional stories.', '2026-01-10 20:45:00', -4, -8);
+INSERT INTO COMMENTS (id, text, created_at, user_id, video_id) VALUES (-35, 'Russell is such a lovable character!', '2026-01-10 21:00:00', -7, -8);
 
-INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-1, -2, -1, '2026-01-10 10:50:00');
+
+INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-1, -2, -1, '2026-01-10 10:40:00');
 INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-2, -3, -1, '2026-01-10 10:50:00');
 INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-3, -4, -1, '2026-01-10 11:00:00');
 INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-4, -5, -1, '2026-01-10 11:10:00');
-INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-5, -6, -1, '2026-01-10 11:20:00');
-INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-6, -7, -1, '2026-01-10 13:15:00');
-INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-7, -2, -2, '2026-01-10 11:30:00');
-INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-8, -3, -2, '2026-01-10 11:45:00');
-INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-9, -5, -2, '2026-01-10 12:00:00');
-INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-10, -7, -2, '2026-01-10 13:30:00');
-INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-11, -1, -2, '2026-01-10 14:00:00');
+INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-5, -7, -1, '2026-01-10 11:20:00');
+INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-6, -2, -2, '2026-01-10 10:55:00');
+INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-7, -3, -2, '2026-01-10 11:10:00');
+INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-8, -4, -2, '2026-01-10 11:25:00');
+INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-9, -6, -2, '2026-01-10 12:00:00');
+INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-10, -1, -2, '2026-01-10 14:00:00');
+INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-11, -1, -3, '2026-01-10 12:00:00');
 INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-12, -2, -3, '2026-01-10 12:30:00');
 INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-13, -4, -3, '2026-01-10 12:45:00');
 INSERT INTO VIDEO_VIEWS (id, user_id, video_id, viewed_at) VALUES (-14, -6, -3, '2026-01-10 13:00:00');

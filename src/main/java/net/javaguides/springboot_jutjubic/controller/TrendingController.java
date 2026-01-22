@@ -67,7 +67,15 @@ public class TrendingController {
                 String ipAddress = extractClientIP(request);
                 logger.info("✗ Using IP geolocation: {}", ipAddress);
                 userLocation = geolocationService.getLocationFromIP(ipAddress);
+
+                // FALLBACK: Ako je local IP (localhost testing)
+                if (userLocation == null) {
+                    logger.warn("⚠ Local IP or IP geolocation failed, using default location (Novi Sad)");
+                    userLocation = new LocationDTO(45.2671, 19.8335, true);
+                    userLocation.setLocationName("Novi Sad, Serbia (default)");
+                }
             }
+            
         }
 
         // Ako ni posle svega nemamo lokaciju
