@@ -1,6 +1,7 @@
 package net.javaguides.springboot_jutjubic.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.javaguides.springboot_jutjubic.dto.TrendingVideoDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -331,4 +332,10 @@ public class VideoController {
 
         return ResponseEntity.ok(viewCount);
     }
+
+    @GetMapping("/trending")
+    public ResponseEntity<List<TrendingVideoDTO>> getTrendingVideos() {
+        return ResponseEntity.ok(videoService.getTrendingVideos());
+    }
+
 }
