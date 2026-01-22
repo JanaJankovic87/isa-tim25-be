@@ -23,7 +23,13 @@ public class Address {
     @Column(name = "country")
     private String country;
 
-    // Address zna za User-a
+    // NOVO - dodaj koordinate
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
     @OneToOne(mappedBy = "address")
     @JsonIgnore
     private User user;
@@ -38,51 +44,29 @@ public class Address {
         this.country = country;
     }
 
-    public Long getId() {
-        return id;
-    }
+    // Getters & Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public String getStreet() { return street; }
+    public void setStreet(String street) { this.street = street; }
 
-    public String getStreet() {
-        return street;
-    }
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
 
-    public void setStreet(String street) {
-        this.street = street;
-    }
+    public String getPostalCode() { return postalCode; }
+    public void setPostalCode(String postalCode) { this.postalCode = postalCode; }
 
-    public String getCity() {
-        return city;
-    }
+    public String getCountry() { return country; }
+    public void setCountry(String country) { this.country = country; }
 
-    public void setCity(String city) {
-        this.city = city;
-    }
+    // NOVO
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
 
-    public String getPostalCode() {
-        return postalCode;
-    }
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
 
-    public void setPostalCode(String postalCode) {
-        this.postalCode = postalCode;
-    }
-
-    public String getCountry() {
-        return country;
-    }
-
-    public void setCountry(String country) {
-        this.country = country;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
 }
