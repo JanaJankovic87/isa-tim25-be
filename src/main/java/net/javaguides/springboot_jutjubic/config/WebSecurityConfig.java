@@ -15,6 +15,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.web.client.RestTemplate;
 
 import net.javaguides.springboot_jutjubic.security.RestAuthenticationEntryPoint;
 import net.javaguides.springboot_jutjubic.security.TokenAuthenticationFilter;
@@ -77,6 +78,7 @@ public class WebSecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/videos/*/like").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/videos/*/view").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/videos/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/trending/**").permitAll()
                 .anyRequest().authenticated()
         );
 
@@ -91,5 +93,10 @@ public class WebSecurityConfig {
         http.authenticationProvider(authenticationProvider());
 
         return http.build();
+    }
+
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
     }
 }
