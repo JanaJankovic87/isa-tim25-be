@@ -6,10 +6,14 @@ public class TrendingVideoDTO {
     private Long videoId;
     private String title;
     private String thumbnailPath;
-    private Double popularityScore;  // S1 će računati
+    private Double popularityScore;
     private Long viewCount;
-    private Double distanceKm;       // NOVO - za lokalni trending
-    private String location;         // NOVO - gde je video snimljen
+    private Double distanceKm;
+    private String location;
+
+    // DODAJ OVO:
+    private Double latitude;
+    private Double longitude;
 
     // Constructor za GLOBALNI trending (postojeći)
     public TrendingVideoDTO(Video video, double trendingScore) {
@@ -17,9 +21,11 @@ public class TrendingVideoDTO {
         this.title = video.getTitle();
         this.thumbnailPath = video.getThumbnailPath();
         this.popularityScore = trendingScore;
-        this.viewCount = 0L; // Popuniće se kasnije
-        this.distanceKm = null; // Nema distance za globalni
+        this.viewCount = 0L;
+        this.distanceKm = null;
         this.location = video.getLocation();
+        this.latitude = video.getLatitude();   // DODAJ
+        this.longitude = video.getLongitude(); // DODAJ
     }
 
     // Constructor za LOKALNI trending (S2 novi)
@@ -30,6 +36,8 @@ public class TrendingVideoDTO {
         this.popularityScore = popularityScore;
         this.distanceKm = distanceKm;
         this.location = video.getLocation();
+        this.latitude = video.getLatitude();   // DODAJ
+        this.longitude = video.getLongitude(); // DODAJ
     }
 
     // Prazni constructor
@@ -57,6 +65,13 @@ public class TrendingVideoDTO {
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
 
+    // DODAJ OVO:
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
+
     // Backward compatibility
     public Video getVideo() {
         Video v = new Video();
@@ -64,6 +79,8 @@ public class TrendingVideoDTO {
         v.setTitle(title);
         v.setThumbnailPath(thumbnailPath);
         v.setLocation(location);
+        v.setLatitude(latitude);   // DODAJ
+        v.setLongitude(longitude); // DODAJ
         return v;
     }
 
