@@ -1,5 +1,6 @@
 package net.javaguides.springboot_jutjubic.service;
 
+import net.javaguides.springboot_jutjubic.dto.LocationDTO;
 import net.javaguides.springboot_jutjubic.dto.TrendingVideoDTO;
 import net.javaguides.springboot_jutjubic.model.Video;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -28,7 +29,7 @@ public interface VideoService {
 
     List<Video> searchByKeyword(String keyword);
 
-    void likeVideo(Long videoId, Long userId);
+    void likeVideo(Long videoId, Long userId, LocationDTO location);
 
     void unlikeVideo(Long videoId, Long userId);
 

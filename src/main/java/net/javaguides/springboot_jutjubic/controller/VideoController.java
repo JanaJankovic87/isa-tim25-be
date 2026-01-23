@@ -1,7 +1,10 @@
 package net.javaguides.springboot_jutjubic.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
+import net.javaguides.springboot_jutjubic.dto.LocationDTO;
 import net.javaguides.springboot_jutjubic.dto.TrendingVideoDTO;
+import net.javaguides.springboot_jutjubic.service.impl.GeolocationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +36,9 @@ public class VideoController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private GeolocationService geolocationService;
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -67,6 +73,43 @@ public class VideoController {
         }
 
         return user;
+    }
+
+    private LocationDTO resolveLocation(Double lat, Double lng, HttpServletRequest request) {
+        // sa gps
+        if (lat != null && lng != null) {
+            LocationDTO location = new LocationDTO(lat, lng, false);
+            location.setLocationName("GPS location");
+            return location;
+        }
+
+        // ip geolocation
+        String ipAddress = extractClientIP(request);
+
+        LocationDTO location = geolocationService.getLocationFromIP(ipAddress);
+
+        if (location == null) {
+            return null;
+        }
+
+        return location;
+    }
+
+    private String extractClientIP(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip != null ? ip : "127.0.0.1";
     }
 
     // POST - Upload videa
@@ -211,7 +254,9 @@ public class VideoController {
 
 
     @PostMapping("/{id}/like")
-    public ResponseEntity<?> likeVideo(@PathVariable Long id) {
+    public ResponseEntity<?> likeVideo(@PathVariable Long id,
+                                       @RequestBody(required = false) LocationDTO locationDTO,
+                                       HttpServletRequest request) {
         try {
             User currentUser = getCurrentUser();
             Video video = videoService.findById(id);
@@ -221,7 +266,15 @@ public class VideoController {
                         .body("Video nije pronađen");
             }
 
-            videoService.likeVideo(id, currentUser.getId());
+            LocationDTO location;
+            if (locationDTO != null && locationDTO.getLatitude() != null && locationDTO.getLongitude() != null) {
+                location = locationDTO;
+            } else {
+                String ipAddress = extractClientIP(request);
+                location = geolocationService.getLocationFromIP(ipAddress);
+            }
+
+            videoService.likeVideo(id, currentUser.getId(), location);
 
             long likesCount = videoService.getLikesCount(id);
 
