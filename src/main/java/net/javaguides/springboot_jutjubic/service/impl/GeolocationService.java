@@ -19,13 +19,18 @@ public class GeolocationService {
 
     /**
      * Dobija lokaciju korisnika iz IP adrese
+     * Za localhost vraća Beograd (za testiranje)
      */
     public LocationDTO getLocationFromIP(String ipAddress) {
+        // Localhost ili private IP → vrati Beograd za testiranje
         if (isLocalIP(ipAddress)) {
-            logger.warn("Local IP detected: {}, cannot determine location", ipAddress);
-            return null;
+            logger.info("✓ Local IP detected: {}, using Belgrade for testing", ipAddress);
+            LocationDTO location = new LocationDTO(44.7866, 20.4489, true);
+            location.setLocationName("Belgrade, Serbia");
+            return location;
         }
 
+        // Pravi javni IP → pozovi API
         try {
             String url = String.format("https://ipapi.co/%s/json/", ipAddress);
             logger.info("Fetching geolocation for IP: {}", ipAddress);
@@ -39,14 +44,18 @@ public class GeolocationService {
                         true
                 );
                 location.setLocationName(response.getCity() + ", " + response.getCountry());
-                logger.info("Location resolved from IP: {}", location.getLocationName());
+                logger.info("✓ Location resolved from IP: {}", location.getLocationName());
                 return location;
             }
         } catch (Exception e) {
-            logger.error("IP geolocation failed: {}", e.getMessage());
+            logger.error("IP geolocation API failed: {}", e.getMessage());
         }
 
-        return null;
+        // Fallback ako API ne radi
+        logger.warn("IP geolocation failed, using Belgrade as fallback");
+        LocationDTO location = new LocationDTO(44.7866, 20.4489, true);
+        location.setLocationName("Belgrade, Serbia");
+        return location;
     }
 
     /**
@@ -65,7 +74,7 @@ public class GeolocationService {
                     false
             );
             location.setLocationName(address.getCity() + ", " + address.getCountry());
-            logger.info("Location from address: {}", location.getLocationName());
+            logger.info("✓ Location from address: {}", location.getLocationName());
             return location;
         }
 
@@ -94,9 +103,26 @@ public class GeolocationService {
     private boolean isLocalIP(String ip) {
         return ip == null || ip.isEmpty() ||
                 ip.equals("127.0.0.1") ||
+                ip.equals("::1") ||
                 ip.equals("0:0:0:0:0:0:0:1") ||
                 ip.startsWith("192.168.") ||
-                ip.startsWith("10.");
+                ip.startsWith("10.") ||
+                ip.startsWith("172.16.") ||
+                ip.startsWith("172.17.") ||
+                ip.startsWith("172.18.") ||
+                ip.startsWith("172.19.") ||
+                ip.startsWith("172.20.") ||
+                ip.startsWith("172.21.") ||
+                ip.startsWith("172.22.") ||
+                ip.startsWith("172.23.") ||
+                ip.startsWith("172.24.") ||
+                ip.startsWith("172.25.") ||
+                ip.startsWith("172.26.") ||
+                ip.startsWith("172.27.") ||
+                ip.startsWith("172.28.") ||
+                ip.startsWith("172.29.") ||
+                ip.startsWith("172.30.") ||
+                ip.startsWith("172.31.");
     }
 
     public static class IpApiResponse {

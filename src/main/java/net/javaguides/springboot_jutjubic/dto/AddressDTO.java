@@ -20,37 +20,29 @@ public class AddressDTO {
     @Size(max = 100, message = "Country must not exceed 100 characters")
     private String country;
 
+    // NOVO - opciono, frontend može da pošalje
+    private Double latitude;
+    private Double longitude;
+
     public AddressDTO() {}
 
-    public String getStreet() {
-        return street;
-    }
+    // Postojeći getters/setters...
+    public String getStreet() { return street; }
+    public void setStreet(String street) { this.street = street; }
 
-    public void setStreet(String street) {
-        this.street = street;
-    }
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
 
-    public String getCity() {
-        return city;
-    }
+    public String getPostalCode() { return postalCode; }
+    public void setPostalCode(String postalCode) { this.postalCode = postalCode; }
 
-    public void setCity(String city) {
-        this.city = city;
-    }
+    public String getCountry() { return country; }
+    public void setCountry(String country) { this.country = country; }
 
-    public String getPostalCode() {
-        return postalCode;
-    }
+    // NOVO
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
 
-    public void setPostalCode(String postalCode) {
-        this.postalCode = postalCode;
-    }
-
-    public String getCountry() {
-        return country;
-    }
-
-    public void setCountry(String country) {
-        this.country = country;
-    }
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
 }

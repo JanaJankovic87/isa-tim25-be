@@ -11,4 +11,5 @@ public interface UserService {
     List<User> findAll();
     User save(UserRequest userRequest);
     boolean activateUser(String token);
+
 }

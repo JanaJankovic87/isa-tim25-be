@@ -5,14 +5,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import net.javaguides.springboot_jutjubic.dto.LocationDTO;
-import net.javaguides.springboot_jutjubic.model.User;
 import net.javaguides.springboot_jutjubic.service.impl.GeolocationService;
 import net.javaguides.springboot_jutjubic.service.impl.LocalTrendingService;
-import net.javaguides.springboot_jutjubic.service.UserService;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/trending")
@@ -27,15 +26,10 @@ public class TrendingController {
     @Autowired
     private GeolocationService geolocationService;
 
-    @Autowired
-    private UserService userService;
-
     /**
      * S2: LOKALNI TRENDING
-     * Prioriteti:
-     * 1. User-provided lat/lng (query params)
-     * 2. Authenticated user's Address
-     * 3. IP geolocation
+     * 1. Korisnik ODOBRI → koristi browser geolocation (lat/lng iz frontend-a)
+     * 2. Korisnik ODBIJE → koristi IP geolocation (odakle je upućen zahtev)
      */
     @GetMapping("/local")
     public ResponseEntity<?> getLocalTrending(
@@ -47,84 +41,64 @@ public class TrendingController {
 
         LocationDTO userLocation = null;
 
-        // PRIORITET 1: User dao lat/lng
+        // SCENARIO 1: Korisnik ODOBRIO browser lokaciju (frontend poslao lat/lng)
         if (lat != null && lng != null) {
-            logger.info("✓ User provided location: lat={}, lng={}", lat, lng);
+            logger.info("✓ Using browser geolocation: lat={}, lng={}", lat, lng);
             userLocation = new LocationDTO(lat, lng, false);
-            userLocation.setLocationName("User provided");
+            userLocation.setLocationName("Browser location");
         }
-        // PRIORITET 2: Authenticated user sa Address-om
+        // SCENARIO 2: Korisnik ODBIO browser lokaciju → koristi IP geolocation
         else {
-            User currentUser = getCurrentUser();
+            String ipAddress = extractClientIP(request);
+            logger.info("User denied geolocation, attempting IP geolocation for: {}", ipAddress);
 
-            if (currentUser != null && currentUser.getAddress() != null) {
-                logger.info("✓ Using user address: {}", currentUser.getEmail());
-                userLocation = geolocationService.getLocationFromAddress(currentUser.getAddress());
+            userLocation = geolocationService.getLocationFromIP(ipAddress);
+
+            if (userLocation != null) {
+                logger.info("✓ Using IP geolocation: {}", userLocation.getLocationName());
+            } else {
+                logger.error("✗ IP geolocation failed for IP: {}", ipAddress);
+
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Location unavailable");
+                errorResponse.put("message", "Cannot determine location from IP: " + ipAddress);
+
+                return ResponseEntity.status(400).body(errorResponse);
             }
-
-            // PRIORITET 3: IP geolocation
-            if (userLocation == null) {
-                String ipAddress = extractClientIP(request);
-                logger.info("✗ Using IP geolocation: {}", ipAddress);
-                userLocation = geolocationService.getLocationFromIP(ipAddress);
-            }
-        }
-
-        // Ako ni posle svega nemamo lokaciju
-        if (userLocation == null) {
-            logger.error("Could not determine user location");
-            return ResponseEntity.badRequest().body("Could not determine your location");
         }
 
         // Pozovi trending service
-        LocalTrendingService.TrendingResult result = localTrendingService.getLocalTrending(
-                userLocation,
-                radiusKm,
-                limit
-        );
+        try {
+            LocalTrendingService.TrendingResult result = localTrendingService.getLocalTrending(
+                    userLocation,
+                    radiusKm,
+                    limit
+            );
 
-        return ResponseEntity.ok(result);
+            logger.info("✓ Trending videos returned: {} videos", result.getVideos().size());
+
+            return ResponseEntity.ok(result);
+
+        } catch (Exception e) {
+            logger.error("Error fetching local trending: {}", e.getMessage(), e);
+            return ResponseEntity.status(500)
+                    .body("Failed to fetch trending videos");
+        }
     }
 
-    /**
-     * S2: Performance metrics endpoint
-     */
     @GetMapping("/metrics")
     public ResponseEntity<LocalTrendingService.PerformanceMetrics> getMetrics() {
         return ResponseEntity.ok(localTrendingService.getMetrics());
     }
 
-    /**
-     * S2: Reset metrics (za testiranje)
-     */
     @PostMapping("/metrics/reset")
     public ResponseEntity<Void> resetMetrics() {
         localTrendingService.resetMetrics();
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * Uzmi trenutno autentifikovanog korisnika
-     */
-    private User getCurrentUser() {
-        try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) {
-                String email = auth.getName();
-                return userService.findByEmail(email);
-            }
-        } catch (Exception e) {
-            logger.warn("Could not get current user: {}", e.getMessage());
-        }
-        return null;
-    }
-
-    /**
-     * Extract client IP address
-     */
     private String extractClientIP(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");
-
         if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
             ip = request.getHeader("Proxy-Client-IP");
         }
@@ -134,11 +108,9 @@ public class TrendingController {
         if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
             ip = request.getRemoteAddr();
         }
-
         if (ip != null && ip.contains(",")) {
             ip = ip.split(",")[0].trim();
         }
-
         return ip != null ? ip : "127.0.0.1";
     }
 }
