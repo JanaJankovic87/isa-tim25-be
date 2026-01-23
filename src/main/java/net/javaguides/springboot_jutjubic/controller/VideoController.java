@@ -343,7 +343,8 @@ public class VideoController {
     }
 
     @PostMapping("/{id}/view")
-    public ResponseEntity<?> recordView(@PathVariable Long id) {
+    public ResponseEntity<?> recordView(@PathVariable Long id, @RequestBody(required = false) LocationDTO locationDTO,
+                                        HttpServletRequest request) {
         try {
             User currentUser = getCurrentUser();
             Video video = videoService.findById(id);
@@ -353,7 +354,15 @@ public class VideoController {
                         .body("Video nije pronađen");
             }
 
-            videoService.recordView(id, currentUser.getId());
+            LocationDTO location;
+            if (locationDTO != null && locationDTO.getLatitude() != null && locationDTO.getLongitude() != null) {
+                location = locationDTO;
+            } else {
+                String ipAddress = extractClientIP(request);
+                location = geolocationService.getLocationFromIP(ipAddress);
+            }
+
+            videoService.recordView(id, currentUser.getId(), location);
 
             long viewCount = videoService.getViewCount(id);
 

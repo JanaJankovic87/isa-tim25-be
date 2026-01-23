@@ -305,7 +305,7 @@
 
         @Override
         @Transactional
-        public void recordView(Long videoId, Long userId) {
+        public void recordView(Long videoId, Long userId, LocationDTO location) {
             try {
                 // 1. Pronađi video
                 Video video = videoRepository.findById(videoId)
@@ -325,6 +325,14 @@
 
                 // 4. Sačuvaj zapis da je korisnik pogledao video
                 VideoView view = new VideoView(userId, videoId);
+
+                if (location != null) {
+                    view.setLatitude(location.getLatitude());
+                    view.setLongitude(location.getLongitude());
+                    view.setLocationName(location.getLocationName());
+                    view.setIsLocationApproximated(location.getIsApproximated());
+                }
+
                 videoViewRepository.save(view);
 
                 logger.info("Registrovan view: korisnik {} pogledao video {}", userId, videoId);
