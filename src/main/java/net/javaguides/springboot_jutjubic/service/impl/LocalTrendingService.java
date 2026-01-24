@@ -1,22 +1,22 @@
 package net.javaguides.springboot_jutjubic.service.impl;
 
-
+import net.javaguides.springboot_jutjubic.dto.LocationDTO;
+import net.javaguides.springboot_jutjubic.dto.TrendingVideoDTO;
 import net.javaguides.springboot_jutjubic.model.Comment;
+import net.javaguides.springboot_jutjubic.model.Video;
 import net.javaguides.springboot_jutjubic.model.VideoLike;
 import net.javaguides.springboot_jutjubic.model.VideoView;
+import net.javaguides.springboot_jutjubic.repository.CommentRepository;
+import net.javaguides.springboot_jutjubic.repository.VideoLikeRepository;
+import net.javaguides.springboot_jutjubic.repository.VideoRepository;
+import net.javaguides.springboot_jutjubic.repository.VideoViewRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import net.javaguides.springboot_jutjubic.dto.LocationDTO;
-import net.javaguides.springboot_jutjubic.dto.TrendingVideoDTO;
-import net.javaguides.springboot_jutjubic.model.Video;
-import net.javaguides.springboot_jutjubic.service.VideoService;
 
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+
 
 @Service
 public class LocalTrendingService {
@@ -24,11 +24,21 @@ public class LocalTrendingService {
     private static final Logger logger = LoggerFactory.getLogger(LocalTrendingService.class);
 
     @Autowired
-    private GeolocationService geolocationService;
+    private VideoRepository videoRepository;
 
     @Autowired
-    private VideoService videoService;
+    private VideoLikeRepository videoLikeRepository;
 
+    @Autowired
+    private VideoViewRepository videoViewRepository;
+
+    @Autowired
+    private CommentRepository commentRepository;
+
+    @Autowired
+    private GeolocationService geolocationService;
+
+    // Performance tracking
     private long totalRequests = 0;
     private long totalResponseTimeMs = 0;
     private final List<Long> responseTimes = new ArrayList<>();
@@ -38,125 +48,330 @@ public class LocalTrendingService {
 
         try {
 
-            List<Video> allVideos = videoService.findAll();
-            List<TrendingVideoDTO> nearbyVideos = new ArrayList<>();
+            SpatialIndex spatialIndex = buildSpatialIndex();
+
+            List<SpatialObject> nearbyInteractions = spatialIndex.queryRadius(
+                    userLocation.getLatitude(),
+                    userLocation.getLongitude(),
+                    radiusKm
+            );
+
+            Map<Long, VideoTrendingData> videoScores = new HashMap<>();
+
+            for (SpatialObject obj : nearbyInteractions) {
+                VideoTrendingData data = videoScores.computeIfAbsent(
+                        obj.videoId,
+                        k -> new VideoTrendingData()
+                );
+
+                double weight = obj.isApproximated ? 0.5 : 1.0;
+
+                switch (obj.type) {
+                    case LIKE:
+                        data.localLikes += weight;
+                        break;
+                    case VIEW:
+                        data.localViews += weight;
+                        break;
+                    case COMMENT:
+                        data.localComments += weight;
+                        break;
+                }
+            }
+
+            List<Video> allVideos = videoRepository.findAll();
+            List<TrendingVideoDTO> trendingVideos = new ArrayList<>();
 
             for (Video video : allVideos) {
+                VideoTrendingData data = videoScores.get(video.getId());
 
-                VideoTrendingData data = calculateLocalTrendingScore(video, userLocation, radiusKm);
+                if (data != null && data.totalInteractions() > 0) {
 
-                if (data.totalScore > 0) {
-                    TrendingVideoDTO dto = new TrendingVideoDTO(video, data.totalScore);
+                    double score = (data.localViews * 0.4)
+                            + (data.localLikes * 0.3)
+                            + (data.localComments * 0.2);
+
+                    data.totalScore = score;
+
+                    TrendingVideoDTO dto = new TrendingVideoDTO(video, score);
                     dto.setViewCount((long) data.localViews);
-
                     dto.setLocalLikes(data.localLikes);
                     dto.setLocalViews(data.localViews);
                     dto.setLocalComments(data.localComments);
 
-                    nearbyVideos.add(dto);
+                    trendingVideos.add(dto);
                 }
             }
 
-            nearbyVideos.sort((a, b) -> Double.compare(
-                    b.getTrendingScore(),
-                    a.getTrendingScore()
+            trendingVideos.sort((a, b) -> Double.compare(
+                    b.getTrendingScore(), a.getTrendingScore()
             ));
 
-            List<TrendingVideoDTO> result = new ArrayList<>();
-            int maxResults = Math.min(5, nearbyVideos.size());
-            for (int i = 0; i < maxResults; i++) {
-                result.add(nearbyVideos.get(i));
-            }
+            List<TrendingVideoDTO> result = trendingVideos.subList(
+                    0, Math.min(limit, trendingVideos.size())
+            );
 
             long elapsedMs = System.currentTimeMillis() - startTime;
             updateMetrics(elapsedMs);
 
-            return new TrendingResult(
-                    result,
-                    elapsedMs,
-                    userLocation.getIsApproximated(),
-                    userLocation,
-                    radiusKm
-            );
+            logger.info("Pronađeno {} trending videa u {} ms", result.size(), elapsedMs);
+
+            return new TrendingResult(result, elapsedMs,
+                    userLocation.getIsApproximated(), userLocation, radiusKm);
+
         } catch (Exception e) {
             long elapsedMs = System.currentTimeMillis() - startTime;
-            return new TrendingResult(
-                    new ArrayList<>(),
-                    elapsedMs,
-                    true,
-                    userLocation,
-                    radiusKm
-            );
+            logger.error("Greška: {}", e.getMessage(), e);
+            return new TrendingResult(new ArrayList<>(), elapsedMs, true, userLocation, radiusKm);
         }
     }
 
-    private VideoTrendingData calculateLocalTrendingScore(Video video, LocationDTO userLocation, int radiusKm) {
-        VideoTrendingData data = new VideoTrendingData();
+    private SpatialIndex buildSpatialIndex() {
+        long startTime = System.currentTimeMillis();
 
-        List<VideoLike> allLikes = videoService.getAllVideoLikes(video.getId());
+        // granice Balkana
+        double minLat = 36;  // Jug
+        double maxLat = 47;  // Sever
+        double minLng = 13;  // Zapad
+        double maxLng = 30;  // Istok
+
+        SpatialIndex index = new SpatialIndex(minLat, maxLat, minLng, maxLng);
+
+        List<VideoLike> allLikes = videoLikeRepository.findAll();
         for (VideoLike like : allLikes) {
-            if (isWithinRadius(userLocation, like.getLatitude(), like.getLongitude(), radiusKm)) {
-                if (Boolean.TRUE.equals(like.getIsLocationApproximated())) {
-                    data.localLikes += 0.5;
-                } else {
-                    data.localLikes += 1.0;
-                }
+            if (like.getLatitude() != null && like.getLongitude() != null) {
+                index.insert(new SpatialObject(
+                        like.getVideoId(),
+                        like.getLatitude(),
+                        like.getLongitude(),
+                        InteractionType.LIKE,
+                        Boolean.TRUE.equals(like.getIsLocationApproximated())
+                ));
             }
         }
 
-        List<VideoView> allViews = videoService.getAllViews(video.getId());
+        List<VideoView> allViews = videoViewRepository.findAll();
         for (VideoView view : allViews) {
-            if (isWithinRadius(userLocation, view.getLatitude(), view.getLongitude(), radiusKm)) {
-                if (Boolean.TRUE.equals(view.getIsLocationApproximated())) {
-                    data.localViews += 0.5;
-                } else {
-                    data.localViews += 1.0;
-                }
+            if (view.getLatitude() != null && view.getLongitude() != null) {
+                index.insert(new SpatialObject(
+                        view.getVideoId(),
+                        view.getLatitude(),
+                        view.getLongitude(),
+                        InteractionType.VIEW,
+                        Boolean.TRUE.equals(view.getIsLocationApproximated())
+                ));
             }
         }
 
-        List<Comment> allComments = videoService.getAllComments(video.getId());
+        List<Comment> allComments = commentRepository.findAll();
         for (Comment comment : allComments) {
-            if (isWithinRadius(userLocation, comment.getLatitude(), comment.getLongitude(), radiusKm)) {
-                if (Boolean.TRUE.equals(comment.getIsLocationApproximated())) {
-                    data.localComments += 0.5;
+            if (comment.getLatitude() != null && comment.getLongitude() != null) {
+                index.insert(new SpatialObject(
+                        comment.getVideo().getId(),
+                        comment.getLatitude(),
+                        comment.getLongitude(),
+                        InteractionType.COMMENT,
+                        Boolean.TRUE.equals(comment.getIsLocationApproximated())
+                ));
+            }
+        }
+        return index;
+    }
+
+    private static class SpatialIndex {
+        private final QuadtreeNode root;
+        private final double minLat, maxLat, minLng, maxLng;
+
+        public SpatialIndex(double minLat, double maxLat, double minLng, double maxLng) {
+            this.minLat = minLat;
+            this.maxLat = maxLat;
+            this.minLng = minLng;
+            this.maxLng = maxLng;
+            this.root = new QuadtreeNode(minLat, maxLat, minLng, maxLng);
+        }
+
+        public void insert(SpatialObject obj) {
+            root.insert(obj);
+        }
+
+        public List<SpatialObject> queryRadius(double lat, double lng, double radiusKm) {
+            double latDelta = radiusKm / 111.0; // 1° latitude ≈ 111 km
+            double lngDelta = radiusKm / (111.0 * Math.cos(Math.toRadians(lat)));
+
+            double queryMinLat = lat - latDelta;
+            double queryMaxLat = lat + latDelta;
+            double queryMinLng = lng - lngDelta;
+            double queryMaxLng = lng + lngDelta;
+
+            List<SpatialObject> candidates = new ArrayList<>();
+            root.query(queryMinLat, queryMaxLat, queryMinLng, queryMaxLng, candidates);
+
+            List<SpatialObject> result = new ArrayList<>();
+            for (SpatialObject obj : candidates) {
+                double distance = calculateDistance(lat, lng, obj.lat, obj.lng);
+                if (distance <= radiusKm) {
+                    result.add(obj);
+                }
+            }
+
+            return result;
+        }
+
+        private double calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+            final int R = 6371; // precnik zemlje
+
+            double latDistance = Math.toRadians(lat2 - lat1);
+            double lngDistance = Math.toRadians(lng2 - lng1);
+
+            double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                    + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                    * Math.sin(lngDistance / 2) * Math.sin(lngDistance / 2);
+
+            double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return R * c;
+        }
+    }
+
+
+    private static class QuadtreeNode {
+        private static final int MAX_CAPACITY = 50;
+        private static final int MAX_DEPTH = 8;
+
+        private final double minLat, maxLat, minLng, maxLng;
+        private final List<SpatialObject> objects = new ArrayList<>();
+
+        private QuadtreeNode nw, ne, sw, se; // Children nodes
+        private boolean isDivided = false;
+
+        public QuadtreeNode(double minLat, double maxLat, double minLng, double maxLng) {
+            this.minLat = minLat;
+            this.maxLat = maxLat;
+            this.minLng = minLng;
+            this.maxLng = maxLng;
+        }
+
+        public void insert(SpatialObject obj) {
+            insert(obj, 0);
+        }
+
+        private void insert(SpatialObject obj, int depth) {
+            if (obj.lat < minLat || obj.lat > maxLat || obj.lng < minLng || obj.lng > maxLng) {
+                return;
+            }
+
+            if (objects.size() < MAX_CAPACITY || depth >= MAX_DEPTH) {
+                objects.add(obj);
+                return;
+            }
+
+            if (!isDivided) {
+                subdivide();
+            }
+
+            double midLat = (minLat + maxLat) / 2.0;
+            double midLng = (minLng + maxLng) / 2.0;
+
+            if (obj.lat <= midLat) {
+                if (obj.lng <= midLng) {
+                    sw.insert(obj, depth + 1);
                 } else {
-                    data.localComments += 1.0;
+                    se.insert(obj, depth + 1);
+                }
+            } else {
+                if (obj.lng <= midLng) {
+                    nw.insert(obj, depth + 1);
+                } else {
+                    ne.insert(obj, depth + 1);
                 }
             }
         }
 
-//        // dodatno za novije videe
-//        long hoursSinceUpload = ChronoUnit.HOURS.between(video.getCreatedAt(), LocalDateTime.now());
-//        double freshness = 1.0 / (1 + hoursSinceUpload / 24.0);
+        private void subdivide() {
+            double midLat = (minLat + maxLat) / 2.0;
+            double midLng = (minLng + maxLng) / 2.0;
 
-        // Views × 0.4 + Likes × 0.3 + Comments × 0.2 + Freshness × 0.1
-        data.totalScore = (data.localViews * 0.4)
-                + (data.localLikes * 0.3)
-                + (data.localComments * 0.2);
-//                + (freshness * 0.1);
+            nw = new QuadtreeNode(midLat, maxLat, minLng, midLng);
+            ne = new QuadtreeNode(midLat, maxLat, midLng, maxLng);
+            sw = new QuadtreeNode(minLat, midLat, minLng, midLng);
+            se = new QuadtreeNode(minLat, midLat, midLng, maxLng);
 
-        return data;
-    }
+            isDivided = true;
 
-    /**
-     * Provera da li je lokacija unutar radijusa
-     */
-    private boolean isWithinRadius(LocationDTO userLoc, Double lat, Double lng, int radiusKm) {
-        // Ako nema koordinata interakcije, preskoči
-        if (userLoc == null || lat == null || lng == null) {
-            return false;
+            // Redistribute existing objects
+            for (SpatialObject obj : objects) {
+                if (obj.lat <= midLat) {
+                    if (obj.lng <= midLng) {
+                        sw.objects.add(obj);
+                    } else {
+                        se.objects.add(obj);
+                    }
+                } else {
+                    if (obj.lng <= midLng) {
+                        nw.objects.add(obj);
+                    } else {
+                        ne.objects.add(obj);
+                    }
+                }
+            }
+            objects.clear();
         }
 
-        double distance = geolocationService.calculateDistance(
-                userLoc.getLatitude(),
-                userLoc.getLongitude(),
-                lat,
-                lng
-        );
+        public void query(double qMinLat, double qMaxLat, double qMinLng, double qMaxLng,
+                          List<SpatialObject> result) {
+            if (qMaxLat < minLat || qMinLat > maxLat || qMaxLng < minLng || qMinLng > maxLng) {
+                return;
+            }
 
-        return distance <= radiusKm;
+            for (SpatialObject obj : objects) {
+                if (obj.lat >= qMinLat && obj.lat <= qMaxLat &&
+                        obj.lng >= qMinLng && obj.lng <= qMaxLng) {
+                    result.add(obj);
+                }
+            }
+
+            if (isDivided) {
+                nw.query(qMinLat, qMaxLat, qMinLng, qMaxLng, result);
+                ne.query(qMinLat, qMaxLat, qMinLng, qMaxLng, result);
+                sw.query(qMinLat, qMaxLat, qMinLng, qMaxLng, result);
+                se.query(qMinLat, qMaxLat, qMinLng, qMaxLng, result);
+            }
+        }
     }
+
+
+    private enum InteractionType {
+        LIKE, VIEW, COMMENT
+    }
+
+    private static class SpatialObject {
+        final Long videoId;
+        final double lat;
+        final double lng;
+        final InteractionType type;
+        final boolean isApproximated;
+
+        public SpatialObject(Long videoId, double lat, double lng,
+                             InteractionType type, boolean isApproximated) {
+            this.videoId = videoId;
+            this.lat = lat;
+            this.lng = lng;
+            this.type = type;
+            this.isApproximated = isApproximated;
+        }
+    }
+
+    private static class VideoTrendingData {
+        double localLikes = 0;
+        double localViews = 0;
+        double localComments = 0;
+        double totalScore = 0;
+
+        int totalInteractions() {
+            return (int) (localLikes + localViews + localComments);
+        }
+    }
+
 
     private synchronized void updateMetrics(long responseTimeMs) {
         totalRequests++;
@@ -239,16 +454,5 @@ public class LocalTrendingService {
         public long getMinResponseTimeMs() { return minResponseTimeMs; }
         public long getMaxResponseTimeMs() { return maxResponseTimeMs; }
         public long getP95ResponseTimeMs() { return p95ResponseTimeMs; }
-    }
-
-    private static class VideoTrendingData {
-        double localLikes = 0;
-        double localViews = 0;
-        double localComments = 0;
-        double totalScore = 0;
-
-        int totalInteractions() {
-            return (int) (localLikes + localViews + localComments);
-        }
     }
 }
