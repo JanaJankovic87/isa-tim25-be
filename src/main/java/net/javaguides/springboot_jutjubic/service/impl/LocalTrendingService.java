@@ -1,5 +1,6 @@
 package net.javaguides.springboot_jutjubic.service.impl;
 
+import net.javaguides.springboot_jutjubic.config.LocalTrendingConfig;
 import net.javaguides.springboot_jutjubic.dto.LocationDTO;
 import net.javaguides.springboot_jutjubic.dto.TrendingVideoDTO;
 import net.javaguides.springboot_jutjubic.model.Comment;
@@ -38,6 +39,9 @@ public class LocalTrendingService {
     @Autowired
     private GeolocationService geolocationService;
 
+    @Autowired
+    private LocalTrendingConfig config;
+
     // Performance tracking
     private long totalRequests = 0;
     private long totalResponseTimeMs = 0;
@@ -64,7 +68,7 @@ public class LocalTrendingService {
                         k -> new VideoTrendingData()
                 );
 
-                double weight = obj.isApproximated ? 0.5 : 1.0;
+                double weight = obj.isApproximated ? config.getIpWeight() : config.getGpsWeight();
 
                 switch (obj.type) {
                     case LIKE:
@@ -87,9 +91,9 @@ public class LocalTrendingService {
 
                 if (data != null && data.totalInteractions() > 0) {
 
-                    double score = (data.localViews * 0.4)
-                            + (data.localLikes * 0.3)
-                            + (data.localComments * 0.2);
+                    double score = (data.localViews * config.getViewWeight())
+                            + (data.localLikes * config.getLikeWeight())
+                            + (data.localComments * config.getCommentWeight());
 
                     data.totalScore = score;
 
@@ -129,16 +133,15 @@ public class LocalTrendingService {
             return new TrendingResult(new ArrayList<>(), elapsedMs, true, userLocation, radiusKm);
         }
     }
-
     private SpatialIndex buildSpatialIndex() {
 
-        // granice Balkana
-        double minLat = 36;  // Jug
-        double maxLat = 47;  // Sever
-        double minLng = 13;  // Zapad
-        double maxLng = 30;  // Istok
+        // granice iz konfiguracije
+        double minLat = config.getRegionMinLat();
+        double maxLat = config.getRegionMaxLat();
+        double minLng = config.getRegionMinLng();
+        double maxLng = config.getRegionMaxLng();
 
-        SpatialIndex index = new SpatialIndex(minLat, maxLat, minLng, maxLng);
+        SpatialIndex index = new SpatialIndex(minLat, maxLat, minLng, maxLng, config);
 
         List<VideoLike> allLikes = videoLikeRepository.findAll();
         for (VideoLike like : allLikes) {
@@ -184,13 +187,15 @@ public class LocalTrendingService {
     private static class SpatialIndex {
         private final QuadtreeNode root;
         private final double minLat, maxLat, minLng, maxLng;
+        private final LocalTrendingConfig config;
 
-        public SpatialIndex(double minLat, double maxLat, double minLng, double maxLng) {
+        public SpatialIndex(double minLat, double maxLat, double minLng, double maxLng, LocalTrendingConfig config) {
             this.minLat = minLat;
             this.maxLat = maxLat;
             this.minLng = minLng;
             this.maxLng = maxLng;
-            this.root = new QuadtreeNode(minLat, maxLat, minLng, maxLng);
+            this.config = config;
+            this.root = new QuadtreeNode(minLat, maxLat, minLng, maxLng, config);
         }
 
         public void insert(SpatialObject obj) {
@@ -198,8 +203,8 @@ public class LocalTrendingService {
         }
 
         public List<SpatialObject> queryRadius(double lat, double lng, double radiusKm) {
-            double latDelta = radiusKm / 111.0; // 1° latitude ≈ 111 km
-            double lngDelta = radiusKm / (111.0 * Math.cos(Math.toRadians(lat)));
+            double latDelta = radiusKm / config.getDegreesToKmLatitude();
+            double lngDelta = radiusKm / (config.getDegreesToKmLatitude() * Math.cos(Math.toRadians(lat)));
 
             double queryMinLat = lat - latDelta;
             double queryMaxLat = lat + latDelta;
@@ -221,7 +226,7 @@ public class LocalTrendingService {
         }
 
         private double calculateDistance(double lat1, double lng1, double lat2, double lng2) {
-            final int R = 6371; // precnik zemlje
+            final double R = config.getEarthRadiusKm();
 
             double latDistance = Math.toRadians(lat2 - lat1);
             double lngDistance = Math.toRadians(lng2 - lng1);
@@ -238,20 +243,24 @@ public class LocalTrendingService {
 
 
     private static class QuadtreeNode {
-        private static final int MAX_CAPACITY = 50;
-        private static final int MAX_DEPTH = 8;
+        private final int MAX_CAPACITY;
+        private final int MAX_DEPTH;
 
         private final double minLat, maxLat, minLng, maxLng;
         private final List<SpatialObject> objects = new ArrayList<>();
+        private final LocalTrendingConfig config;
 
         private QuadtreeNode nw, ne, sw, se; // Children nodes
         private boolean isDivided = false;
 
-        public QuadtreeNode(double minLat, double maxLat, double minLng, double maxLng) {
+        public QuadtreeNode(double minLat, double maxLat, double minLng, double maxLng, LocalTrendingConfig config) {
             this.minLat = minLat;
             this.maxLat = maxLat;
             this.minLng = minLng;
             this.maxLng = maxLng;
+            this.config = config;
+            this.MAX_CAPACITY = config.getQuadtreeMaxCapacity();
+            this.MAX_DEPTH = config.getQuadtreeMaxDepth();
         }
 
         public void insert(SpatialObject obj) {
@@ -294,10 +303,10 @@ public class LocalTrendingService {
             double midLat = (minLat + maxLat) / 2.0;
             double midLng = (minLng + maxLng) / 2.0;
 
-            nw = new QuadtreeNode(midLat, maxLat, minLng, midLng);
-            ne = new QuadtreeNode(midLat, maxLat, midLng, maxLng);
-            sw = new QuadtreeNode(minLat, midLat, minLng, midLng);
-            se = new QuadtreeNode(minLat, midLat, midLng, maxLng);
+            nw = new QuadtreeNode(midLat, maxLat, minLng, midLng, config);
+            ne = new QuadtreeNode(midLat, maxLat, midLng, maxLng, config);
+            sw = new QuadtreeNode(minLat, midLat, minLng, midLng, config);
+            se = new QuadtreeNode(minLat, midLat, midLng, maxLng, config);
 
             isDivided = true;
 
@@ -381,7 +390,7 @@ public class LocalTrendingService {
         totalResponseTimeMs += responseTimeMs;
         responseTimes.add(responseTimeMs);
 
-        if (responseTimes.size() > 1000) {
+        if (responseTimes.size() > config.getMaxResponseTimeSamples()) {
             responseTimes.remove(0);
         }
     }
