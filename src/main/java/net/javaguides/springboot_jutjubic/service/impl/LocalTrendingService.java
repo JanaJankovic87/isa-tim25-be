@@ -107,9 +107,13 @@ public class LocalTrendingService {
                     b.getTrendingScore(), a.getTrendingScore()
             ));
 
-            List<TrendingVideoDTO> result = trendingVideos.subList(
-                    0, Math.min(limit, trendingVideos.size())
-            );
+            List<TrendingVideoDTO> result = new ArrayList<>();
+            int count = 0;
+            for (TrendingVideoDTO dto : trendingVideos) {
+                if (count >= limit) break;
+                result.add(dto);
+                count++;
+            }
 
             long elapsedMs = System.currentTimeMillis() - startTime;
             updateMetrics(elapsedMs);
@@ -127,7 +131,6 @@ public class LocalTrendingService {
     }
 
     private SpatialIndex buildSpatialIndex() {
-        long startTime = System.currentTimeMillis();
 
         // granice Balkana
         double minLat = 36;  // Jug
@@ -456,3 +459,4 @@ public class LocalTrendingService {
         public long getP95ResponseTimeMs() { return p95ResponseTimeMs; }
     }
 }
+
