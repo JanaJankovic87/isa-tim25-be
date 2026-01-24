@@ -3,6 +3,7 @@
     import net.javaguides.springboot_jutjubic.dto.LocationDTO;
     import net.javaguides.springboot_jutjubic.dto.TrendingVideoDTO;
     import net.javaguides.springboot_jutjubic.model.VideoLike;
+    import net.javaguides.springboot_jutjubic.model.VideoView;
     import net.javaguides.springboot_jutjubic.service.VideoService;
     import org.slf4j.Logger;
     import org.slf4j.LoggerFactory;
@@ -19,6 +20,8 @@
     import net.javaguides.springboot_jutjubic.repository.VideoRepository;
     import net.javaguides.springboot_jutjubic.repository.VideoLikeRepository;
     import net.javaguides.springboot_jutjubic.repository.VideoViewRepository;
+    import net.javaguides.springboot_jutjubic.model.Comment;
+    import net.javaguides.springboot_jutjubic.repository.CommentRepository;
 
     import java.io.IOException;
     import java.nio.file.Files;
@@ -41,6 +44,9 @@
 
         @Autowired
         private VideoViewRepository videoViewRepository;
+
+        @Autowired
+        private CommentRepository commentRepository;
 
         @Value("${app.upload.dir:uploads}")
         private String uploadDir;
@@ -403,6 +409,24 @@
             return result;
         }
 
+        @Override
+        public List<VideoLike> getAllVideoLikes(Long videoId) {
+            return videoLikeRepository.findByVideoId(videoId);
+        }
+
+        @Override
+        public List<VideoView> getAllViews(Long videoId) {
+            return videoViewRepository.findByVideoId(videoId);
+        }
+
+        @Override
+        public List<Comment> getAllComments(Long videoId) {
+            return commentRepository.findByVideoId(videoId);
+        }
     }
+
+
+
+
 
 

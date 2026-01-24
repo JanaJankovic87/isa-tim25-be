@@ -11,11 +11,13 @@ public class TrendingVideoDTO {
     private Double distanceKm;
     private String location;
 
-    // DODAJ OVO:
     private Double latitude;
     private Double longitude;
 
-    // Constructor za GLOBALNI trending (postojeći)
+    private Double localLikes = 0.0;
+    private Double localViews = 0.0;
+    private Double localComments = 0.0;
+
     public TrendingVideoDTO(Video video, double trendingScore) {
         this.videoId = video.getId();
         this.title = video.getTitle();
@@ -24,11 +26,11 @@ public class TrendingVideoDTO {
         this.viewCount = 0L;
         this.distanceKm = null;
         this.location = video.getLocation();
-        this.latitude = video.getLatitude();   // DODAJ
-        this.longitude = video.getLongitude(); // DODAJ
+        this.latitude = video.getLatitude();
+        this.longitude = video.getLongitude();
     }
 
-    // Constructor za LOKALNI trending (S2 novi)
+
     public TrendingVideoDTO(Video video, double popularityScore, double distanceKm) {
         this.videoId = video.getId();
         this.title = video.getTitle();
@@ -36,11 +38,10 @@ public class TrendingVideoDTO {
         this.popularityScore = popularityScore;
         this.distanceKm = distanceKm;
         this.location = video.getLocation();
-        this.latitude = video.getLatitude();   // DODAJ
-        this.longitude = video.getLongitude(); // DODAJ
+        this.latitude = video.getLatitude();
+        this.longitude = video.getLongitude();
     }
 
-    // Prazni constructor
     public TrendingVideoDTO() {}
 
     // Getters & Setters
@@ -65,22 +66,29 @@ public class TrendingVideoDTO {
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
 
-    // DODAJ OVO:
     public Double getLatitude() { return latitude; }
     public void setLatitude(Double latitude) { this.latitude = latitude; }
 
     public Double getLongitude() { return longitude; }
     public void setLongitude(Double longitude) { this.longitude = longitude; }
 
-    // Backward compatibility
+    public Double getLocalLikes() { return localLikes; }
+    public void setLocalLikes(Double localLikes) { this.localLikes = localLikes; }
+
+    public Double getLocalViews() { return localViews; }
+    public void setLocalViews(Double localViews) { this.localViews = localViews; }
+
+    public Double getLocalComments() { return localComments; }
+    public void setLocalComments(Double localComments) { this.localComments = localComments; }
+
     public Video getVideo() {
         Video v = new Video();
         v.setId(videoId);
         v.setTitle(title);
         v.setThumbnailPath(thumbnailPath);
         v.setLocation(location);
-        v.setLatitude(latitude);   // DODAJ
-        v.setLongitude(longitude); // DODAJ
+        v.setLatitude(latitude);
+        v.setLongitude(longitude);
         return v;
     }
 

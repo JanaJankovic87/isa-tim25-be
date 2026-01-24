@@ -2,7 +2,10 @@ package net.javaguides.springboot_jutjubic.service;
 
 import net.javaguides.springboot_jutjubic.dto.LocationDTO;
 import net.javaguides.springboot_jutjubic.dto.TrendingVideoDTO;
+import net.javaguides.springboot_jutjubic.model.Comment;
 import net.javaguides.springboot_jutjubic.model.Video;
+import net.javaguides.springboot_jutjubic.model.VideoLike;
+import net.javaguides.springboot_jutjubic.model.VideoView;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -48,4 +51,7 @@ public interface VideoService {
 
     List<TrendingVideoDTO> getTrendingVideos();
 
+    List<VideoLike> getAllVideoLikes(Long videoId);
+    List<VideoView> getAllViews(Long videoId);
+    List<Comment> getAllComments(Long videoId);
 }

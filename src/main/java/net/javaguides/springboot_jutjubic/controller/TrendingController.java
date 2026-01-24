@@ -26,11 +26,6 @@ public class TrendingController {
     @Autowired
     private GeolocationService geolocationService;
 
-    /**
-     * S2: LOKALNI TRENDING
-     * 1. Korisnik ODOBRI → koristi browser geolocation (lat/lng iz frontend-a)
-     * 2. Korisnik ODBIJE → koristi IP geolocation (odakle je upućen zahtev)
-     */
     @GetMapping("/local")
     public ResponseEntity<?> getLocalTrending(
             @RequestParam(required = false) Double lat,
@@ -67,7 +62,6 @@ public class TrendingController {
             }
         }
 
-        // Pozovi trending service
         try {
             LocalTrendingService.TrendingResult result = localTrendingService.getLocalTrending(
                     userLocation,
