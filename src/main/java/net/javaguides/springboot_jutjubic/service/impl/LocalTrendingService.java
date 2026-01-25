@@ -16,8 +16,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
-
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Service
 public class LocalTrendingService {
@@ -42,16 +45,183 @@ public class LocalTrendingService {
     @Autowired
     private LocalTrendingConfig config;
 
-    // Performance tracking
-    private long totalRequests = 0;
-    private long totalResponseTimeMs = 0;
-    private final List<Long> responseTimes = new ArrayList<>();
+    // ==================== CACHE SYSTEM ====================
 
-    public TrendingResult getLocalTrending(LocationDTO userLocation, int radiusKm, int limit) {
+    private final Map<String, CachedResult> cache = new ConcurrentHashMap<>();
+
+    private static class CachedResult {
+        TrendingResult data;
+        Instant cachedAt;
+        long ttlSeconds;
+        String strategy;
+
+        CachedResult(TrendingResult data, long ttlSeconds, String strategy) {
+            this.data = data;
+            this.cachedAt = Instant.now();
+            this.ttlSeconds = ttlSeconds;
+            this.strategy = strategy;
+        }
+
+        boolean isValid() {
+            return Duration.between(cachedAt, Instant.now()).getSeconds() < ttlSeconds;
+        }
+    }
+
+    // ==================== PERFORMANCE TRACKING ====================
+
+    private final Map<String, List<Long>> responseTimeHistory = new ConcurrentHashMap<>();
+    private final Map<String, PerformanceStats> performanceStats = new ConcurrentHashMap<>();
+    private int totalRequests = 0;
+    private int cacheHits = 0;
+    private int cacheMisses = 0;
+
+    private static class PerformanceStats {
+        private final List<Double> responseTimes = new ArrayList<>();
+        private int cacheHits = 0;
+        private double sum = 0;
+        private double min = Double.MAX_VALUE;
+        private double max = 0;
+
+        void addMeasurement(double responseTimeMs, boolean cacheHit) {
+            responseTimes.add(responseTimeMs);
+            sum += responseTimeMs;
+            min = Math.min(min, responseTimeMs);
+            max = Math.max(max, responseTimeMs);
+            if (cacheHit) cacheHits++;
+        }
+
+        double getAverageResponseTime() {
+            return responseTimes.isEmpty() ? 0 : sum / responseTimes.size();
+        }
+
+        double getMinResponseTime() {
+            return responseTimes.isEmpty() ? 0 : min;
+        }
+
+        double getMaxResponseTime() {
+            return responseTimes.isEmpty() ? 0 : max;
+        }
+
+        double getMedianResponseTime() {
+            if (responseTimes.isEmpty()) return 0;
+            List<Double> sorted = new ArrayList<>(responseTimes);
+            Collections.sort(sorted);
+            int middle = sorted.size() / 2;
+            return sorted.size() % 2 == 0
+                    ? (sorted.get(middle - 1) + sorted.get(middle)) / 2.0
+                    : sorted.get(middle);
+        }
+
+        double getP95ResponseTime() {
+            if (responseTimes.isEmpty()) return 0;
+            List<Double> sorted = new ArrayList<>(responseTimes);
+            Collections.sort(sorted);
+            int index = (int) Math.ceil(sorted.size() * 0.95) - 1;
+            return sorted.get(Math.max(0, index));
+        }
+
+        int getTotalRequests() {
+            return responseTimes.size();
+        }
+
+        int getCacheHits() {
+            return cacheHits;
+        }
+
+        double getCacheHitRate() {
+            return responseTimes.isEmpty() ? 0 : (double) cacheHits / responseTimes.size() * 100;
+        }
+    }
+
+    // ==================== STRATEGY METHODS ====================
+
+    /**
+     * STRATEGY 1: Real-time (no cache)
+     */
+    public TrendingResult getRealTimeTrending(LocationDTO userLocation, int radiusKm, int limit) {
+        long startTime = System.nanoTime();
+        try {
+            TrendingResult result = calculateLocalTrending(userLocation, radiusKm, limit);
+            recordMetrics("REAL_TIME", startTime, false);
+            return result;
+        } catch (Exception e) {
+            recordMetrics("REAL_TIME", startTime, false);
+            throw e;
+        }
+    }
+
+    /**
+     * STRATEGY 2: Cached with 30 seconds TTL
+     */
+    public TrendingResult getCachedTrending30s(LocationDTO userLocation, int radiusKm, int limit) {
+        return getCachedTrending(userLocation, radiusKm, limit, 30, "CACHED_30S");
+    }
+
+    /**
+     * STRATEGY 3: Cached with 60 seconds TTL (OPTIMAL)
+     */
+    public TrendingResult getCachedTrending60s(LocationDTO userLocation, int radiusKm, int limit) {
+        return getCachedTrending(userLocation, radiusKm, limit, 60, "CACHED_60S");
+    }
+
+    /**
+     * STRATEGY 4: Cached with 300 seconds (5 min) TTL
+     */
+    public TrendingResult getCachedTrending5min(LocationDTO userLocation, int radiusKm, int limit) {
+        return getCachedTrending(userLocation, radiusKm, limit, 300, "CACHED_5MIN");
+    }
+
+    /**
+     * Generic cached trending
+     */
+    private TrendingResult getCachedTrending(LocationDTO userLocation, int radiusKm, int limit, long ttlSeconds, String strategyName) {
+        long startTime = System.nanoTime();
+
+        String cacheKey = generateCacheKey(userLocation, radiusKm, limit, ttlSeconds);
+        CachedResult cached = cache.get(cacheKey);
+
+        // Check cache
+        if (cached != null && cached.isValid()) {
+            cacheHits++;
+            recordMetrics(strategyName, startTime, true);
+            logger.info("✓ Cache HIT for strategy: {}", strategyName);
+            return cached.data;
+        }
+
+        // Cache miss
+        cacheMisses++;
+        logger.info("✗ Cache MISS for strategy: {}", strategyName);
+
+        try {
+            TrendingResult result = calculateLocalTrending(userLocation, radiusKm, limit);
+            cache.put(cacheKey, new CachedResult(result, ttlSeconds, strategyName));
+            recordMetrics(strategyName, startTime, false);
+            return result;
+        } catch (Exception e) {
+            recordMetrics(strategyName, startTime, false);
+            throw e;
+        }
+    }
+
+    private String generateCacheKey(LocationDTO location, int radius, int limit, long ttl) {
+        return String.format("trending_%.4f_%.4f_%d_%d_%d",
+                location.getLatitude(),
+                location.getLongitude(),
+                radius,
+                limit,
+                ttl);
+    }
+
+    // ==================== MAIN CALCULATION (YOUR ORIGINAL LOGIC) ====================
+
+    /**
+     * ORIGINAL METHOD - renamed from getLocalTrending to calculateLocalTrending
+     * ALL YOUR QUADTREE LOGIC STAYS HERE!
+     */
+    private TrendingResult calculateLocalTrending(LocationDTO userLocation, int radiusKm, int limit) {
         long startTime = System.currentTimeMillis();
 
         try {
-
             SpatialIndex spatialIndex = buildSpatialIndex();
 
             List<SpatialObject> nearbyInteractions = spatialIndex.queryRadius(
@@ -90,7 +260,6 @@ public class LocalTrendingService {
                 VideoTrendingData data = videoScores.get(video.getId());
 
                 if (data != null && data.totalInteractions() > 0) {
-
                     double score = (data.localViews * config.getViewWeight())
                             + (data.localLikes * config.getLikeWeight())
                             + (data.localComments * config.getCommentWeight());
@@ -120,7 +289,6 @@ public class LocalTrendingService {
             }
 
             long elapsedMs = System.currentTimeMillis() - startTime;
-            updateMetrics(elapsedMs);
 
             logger.info("Pronađeno {} trending videa u {} ms", result.size(), elapsedMs);
 
@@ -133,9 +301,18 @@ public class LocalTrendingService {
             return new TrendingResult(new ArrayList<>(), elapsedMs, true, userLocation, radiusKm);
         }
     }
-    private SpatialIndex buildSpatialIndex() {
 
-        // granice iz konfiguracije
+    /**
+     * WRAPPER for backward compatibility
+     */
+    public TrendingResult getLocalTrending(LocationDTO userLocation, int radiusKm, int limit) {
+        // Default: use CACHED_60S (optimal strategy)
+        return getCachedTrending60s(userLocation, radiusKm, limit);
+    }
+
+    // ==================== YOUR ORIGINAL SPATIAL INDEX CODE ====================
+
+    private SpatialIndex buildSpatialIndex() {
         double minLat = config.getRegionMinLat();
         double maxLat = config.getRegionMaxLat();
         double minLng = config.getRegionMinLng();
@@ -183,6 +360,8 @@ public class LocalTrendingService {
         }
         return index;
     }
+
+    // ==================== ALL YOUR ORIGINAL INNER CLASSES ====================
 
     private static class SpatialIndex {
         private final QuadtreeNode root;
@@ -241,7 +420,6 @@ public class LocalTrendingService {
         }
     }
 
-
     private static class QuadtreeNode {
         private final int MAX_CAPACITY;
         private final int MAX_DEPTH;
@@ -250,7 +428,7 @@ public class LocalTrendingService {
         private final List<SpatialObject> objects = new ArrayList<>();
         private final LocalTrendingConfig config;
 
-        private QuadtreeNode nw, ne, sw, se; // Children nodes
+        private QuadtreeNode nw, ne, sw, se;
         private boolean isDivided = false;
 
         public QuadtreeNode(double minLat, double maxLat, double minLng, double maxLng, LocalTrendingConfig config) {
@@ -310,7 +488,6 @@ public class LocalTrendingService {
 
             isDivided = true;
 
-            // Redistribute existing objects
             for (SpatialObject obj : objects) {
                 if (obj.lat <= midLat) {
                     if (obj.lng <= midLng) {
@@ -351,7 +528,6 @@ public class LocalTrendingService {
         }
     }
 
-
     private enum InteractionType {
         LIKE, VIEW, COMMENT
     }
@@ -384,43 +560,65 @@ public class LocalTrendingService {
         }
     }
 
+    // ==================== PERFORMANCE METRICS ====================
 
-    private synchronized void updateMetrics(long responseTimeMs) {
+    private void recordMetrics(String strategy, long startTimeNanos, boolean cacheHit) {
         totalRequests++;
-        totalResponseTimeMs += responseTimeMs;
-        responseTimes.add(responseTimeMs);
+        long responseTimeNanos = System.nanoTime() - startTimeNanos;
+        double responseTimeMs = responseTimeNanos / 1_000_000.0;
 
-        if (responseTimes.size() > config.getMaxResponseTimeSamples()) {
-            responseTimes.remove(0);
-        }
+        // Add to history
+        responseTimeHistory.computeIfAbsent(strategy, k -> new ArrayList<>()).add((long) responseTimeMs);
+
+        // Update stats
+        PerformanceStats stats = performanceStats.computeIfAbsent(strategy, k -> new PerformanceStats());
+        stats.addMeasurement(responseTimeMs, cacheHit);
+
+        logger.info("Strategy: {} | Response Time: {:.2f}ms | Cache Hit: {}", strategy, responseTimeMs, cacheHit);
     }
 
     public PerformanceMetrics getMetrics() {
-        synchronized (this) {
-            if (totalRequests == 0) {
-                return new PerformanceMetrics(0, 0, 0, 0, 0);
-            }
+        PerformanceMetrics metrics = new PerformanceMetrics();
+        metrics.setTotalRequests(totalRequests);
+        metrics.setCacheHits(cacheHits);
+        metrics.setCacheMisses(cacheMisses);
+        metrics.setCacheHitRate(totalRequests > 0 ? (double) cacheHits / totalRequests * 100 : 0);
 
-            double avgResponseTime = (double) totalResponseTimeMs / totalRequests;
+        Map<String, StrategyMetrics> strategyMetrics = new HashMap<>();
 
-            List<Long> sortedTimes = new ArrayList<>(responseTimes);
-            sortedTimes.sort(Long::compareTo);
+        for (Map.Entry<String, PerformanceStats> entry : performanceStats.entrySet()) {
+            StrategyMetrics sm = new StrategyMetrics();
+            PerformanceStats stats = entry.getValue();
 
-            long minTime = sortedTimes.get(0);
-            long maxTime = sortedTimes.get(sortedTimes.size() - 1);
+            sm.setAverageResponseTime(stats.getAverageResponseTime());
+            sm.setMinResponseTime(stats.getMinResponseTime());
+            sm.setMaxResponseTime(stats.getMaxResponseTime());
+            sm.setMedianResponseTime(stats.getMedianResponseTime());
+            sm.setP95ResponseTime(stats.getP95ResponseTime());
+            sm.setTotalRequests(stats.getTotalRequests());
+            sm.setCacheHits(stats.getCacheHits());
+            sm.setCacheHitRate(stats.getCacheHitRate());
 
-            int p95Index = (int) Math.ceil(sortedTimes.size() * 0.95) - 1;
-            long p95Time = sortedTimes.get(Math.max(0, p95Index));
-
-            return new PerformanceMetrics(totalRequests, avgResponseTime, minTime, maxTime, p95Time);
+            strategyMetrics.put(entry.getKey(), sm);
         }
+
+        metrics.setStrategies(strategyMetrics);
+        metrics.setResponseTimeHistory(responseTimeHistory);
+
+        return metrics;
     }
 
-    public synchronized void resetMetrics() {
+    public void resetMetrics() {
+        responseTimeHistory.clear();
+        performanceStats.clear();
+        cache.clear();
         totalRequests = 0;
-        totalResponseTimeMs = 0;
-        responseTimes.clear();
+        cacheHits = 0;
+        cacheMisses = 0;
+        logger.info("✓ Metrics reset");
     }
+
+    // ==================== DTO CLASSES ====================
 
     public static class TrendingResult {
         private List<TrendingVideoDTO> videos;
@@ -443,29 +641,81 @@ public class LocalTrendingService {
         public boolean isLocationApproximated() { return isLocationApproximated; }
         public LocationDTO getUserLocation() { return userLocation; }
         public int getRadiusKm() { return radiusKm; }
+
+        // For backward compatibility
+        public void setVideos(List<TrendingVideoDTO> videos) { this.videos = videos; }
+        public void setUserLocation(LocationDTO userLocation) { this.userLocation = userLocation; }
+        public void setRadiusKm(int radiusKm) { this.radiusKm = radiusKm; }
+        public void setTotalVideos(int total) { } // Ignored
     }
 
     public static class PerformanceMetrics {
-        private long totalRequests;
-        private double avgResponseTimeMs;
-        private long minResponseTimeMs;
-        private long maxResponseTimeMs;
-        private long p95ResponseTimeMs;
+        private int totalRequests;
+        private int cacheHits;
+        private int cacheMisses;
+        private double cacheHitRate;
+        private Map<String, StrategyMetrics> strategies;
+        private Map<String, List<Long>> responseTimeHistory;
 
-        public PerformanceMetrics(long totalRequests, double avgResponseTimeMs,
-                                  long minResponseTimeMs, long maxResponseTimeMs, long p95ResponseTimeMs) {
-            this.totalRequests = totalRequests;
-            this.avgResponseTimeMs = avgResponseTimeMs;
-            this.minResponseTimeMs = minResponseTimeMs;
-            this.maxResponseTimeMs = maxResponseTimeMs;
-            this.p95ResponseTimeMs = p95ResponseTimeMs;
+        // Getters and Setters
+        public int getTotalRequests() { return totalRequests; }
+        public void setTotalRequests(int totalRequests) { this.totalRequests = totalRequests; }
+
+        public int getCacheHits() { return cacheHits; }
+        public void setCacheHits(int cacheHits) { this.cacheHits = cacheHits; }
+
+        public int getCacheMisses() { return cacheMisses; }
+        public void setCacheMisses(int cacheMisses) { this.cacheMisses = cacheMisses; }
+
+        public double getCacheHitRate() { return cacheHitRate; }
+        public void setCacheHitRate(double cacheHitRate) { this.cacheHitRate = cacheHitRate; }
+
+        public Map<String, StrategyMetrics> getStrategies() { return strategies; }
+        public void setStrategies(Map<String, StrategyMetrics> strategies) { this.strategies = strategies; }
+
+        public Map<String, List<Long>> getResponseTimeHistory() { return responseTimeHistory; }
+        public void setResponseTimeHistory(Map<String, List<Long>> responseTimeHistory) {
+            this.responseTimeHistory = responseTimeHistory;
+        }
+    }
+
+    public static class StrategyMetrics {
+        private double averageResponseTime;
+        private double minResponseTime;
+        private double maxResponseTime;
+        private double medianResponseTime;
+        private double p95ResponseTime;
+        private int totalRequests;
+        private int cacheHits;
+        private double cacheHitRate;
+
+        // Getters and Setters
+        public double getAverageResponseTime() { return averageResponseTime; }
+        public void setAverageResponseTime(double averageResponseTime) {
+            this.averageResponseTime = averageResponseTime;
         }
 
-        public long getTotalRequests() { return totalRequests; }
-        public double getAvgResponseTimeMs() { return avgResponseTimeMs; }
-        public long getMinResponseTimeMs() { return minResponseTimeMs; }
-        public long getMaxResponseTimeMs() { return maxResponseTimeMs; }
-        public long getP95ResponseTimeMs() { return p95ResponseTimeMs; }
+        public double getMinResponseTime() { return minResponseTime; }
+        public void setMinResponseTime(double minResponseTime) { this.minResponseTime = minResponseTime; }
+
+        public double getMaxResponseTime() { return maxResponseTime; }
+        public void setMaxResponseTime(double maxResponseTime) { this.maxResponseTime = maxResponseTime; }
+
+        public double getMedianResponseTime() { return medianResponseTime; }
+        public void setMedianResponseTime(double medianResponseTime) {
+            this.medianResponseTime = medianResponseTime;
+        }
+
+        public double getP95ResponseTime() { return p95ResponseTime; }
+        public void setP95ResponseTime(double p95ResponseTime) { this.p95ResponseTime = p95ResponseTime; }
+
+        public int getTotalRequests() { return totalRequests; }
+        public void setTotalRequests(int totalRequests) { this.totalRequests = totalRequests; }
+
+        public int getCacheHits() { return cacheHits; }
+        public void setCacheHits(int cacheHits) { this.cacheHits = cacheHits; }
+
+        public double getCacheHitRate() { return cacheHitRate; }
+        public void setCacheHitRate(double cacheHitRate) { this.cacheHitRate = cacheHitRate; }
     }
 }
-
