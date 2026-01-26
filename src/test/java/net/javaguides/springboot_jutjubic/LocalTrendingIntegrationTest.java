@@ -59,7 +59,7 @@ public class LocalTrendingIntegrationTest {
     @Order(1)
     @DisplayName("Test 1: Basic trending works with existing data")
     public void testBasicTrendingWithExistingData() {
-        System.out.println("\n📋 TEST 1: Basic Trending Functionality");
+        System.out.println("\n TEST 1: Basic Trending Functionality");
 
         // Beograd lokacija
         LocationDTO location = new LocationDTO(44.7866, 20.4489, false);
@@ -120,7 +120,7 @@ public class LocalTrendingIntegrationTest {
     @Order(3)
     @DisplayName("Test 3: Concentrated activities (Beograd centar)")
     public void testConcentratedScenario() {
-        System.out.println("\n🔥 TEST 3: Concentrated Scenario");
+        System.out.println("\n TEST 3: Concentrated Scenario");
 
 
         testDataGenerator.generateConcentratedScenario();
@@ -269,7 +269,7 @@ public class LocalTrendingIntegrationTest {
     @Order(7)
     @DisplayName("Test 7: Edge cases and error handling")
     public void testEdgeCases() {
-        System.out.println("\n⚠️ TEST 7: Edge Cases");
+        System.out.println("\n TEST 7: Edge Cases");
 
         assertThrows(Exception.class, () -> {
             trendingService.getLocalTrending(null, 50, 10);

@@ -47,7 +47,7 @@ public class TrendingTestDataGenerator {
      */
     @Transactional
     public void generateConcentratedScenario() {
-        System.out.println("🔥 Generating CONCENTRATED scenario Beograd centar");
+        System.out.println(" Generating CONCENTRATED scenario Beograd centar");
 
         List<User> users = userRepository.findAll();
         if (users.isEmpty()) {
