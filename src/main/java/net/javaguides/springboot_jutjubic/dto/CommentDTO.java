@@ -19,6 +19,10 @@ public class CommentDTO {
     private LocalDateTime createdAt;
     private Long videoId;
 
+    private Double latitude;
+    private Double longitude;
+    private String locationName;
+
     public CommentDTO() {}
 
     public CommentDTO(Long id, String text, Long userId, String username,
@@ -96,5 +100,29 @@ public class CommentDTO {
 
     public void setVideoId(Long videoId) {
         this.videoId = videoId;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+    }
+
+    public String getLocationName() {
+        return locationName;
+    }
+
+    public void setLocationName(String locationName) {
+        this.locationName = locationName;
     }
 }

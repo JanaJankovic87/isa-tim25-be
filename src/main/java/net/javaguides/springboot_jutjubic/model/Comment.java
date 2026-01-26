@@ -21,6 +21,18 @@ public class Comment implements Serializable {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
+    @Column(name = "location_name")
+    private String locationName;
+
+    @Column(name = "is_location_approximated")
+    private Boolean isLocationApproximated = false;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -35,6 +47,15 @@ public class Comment implements Serializable {
     }
 
     public Comment(String text, User user, Video video) {
+        this.text = text;
+        this.user = user;
+        this.video = video;
+        this.createdAt = LocalDateTime.now();
+    }
+
+    public Comment(String text, User user, Video video, Double latitude, Double longitude) {
+        this.latitude = latitude;
+        this.longitude = longitude;
         this.text = text;
         this.user = user;
         this.video = video;
@@ -80,5 +101,37 @@ public class Comment implements Serializable {
 
     public void setVideo(Video video) {
         this.video = video;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+    }
+
+    public String getLocationName() {
+        return locationName;
+    }
+
+    public void setLocationName(String locationName) {
+        this.locationName = locationName;
+    }
+
+    public Boolean getIsLocationApproximated() {
+        return isLocationApproximated;
+    }
+
+    public void setIsLocationApproximated(Boolean isLocationApproximated) {
+        this.isLocationApproximated = isLocationApproximated;
     }
 }

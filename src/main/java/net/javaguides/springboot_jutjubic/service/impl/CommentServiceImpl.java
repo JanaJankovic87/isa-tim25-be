@@ -1,6 +1,7 @@
     package net.javaguides.springboot_jutjubic.service.impl;
 
     import net.javaguides.springboot_jutjubic.dto.CommentDTO;
+    import net.javaguides.springboot_jutjubic.dto.LocationDTO;
     import net.javaguides.springboot_jutjubic.model.Comment;
     import net.javaguides.springboot_jutjubic.model.User;
     import net.javaguides.springboot_jutjubic.model.Video;
@@ -35,7 +36,7 @@
         @Override
         @Transactional
         @CacheEvict(value = "videoComments", allEntries = true)
-        public CommentDTO createComment(Long videoId, CommentDTO commentDTO, Long userId) {
+        public CommentDTO createComment(Long videoId, CommentDTO commentDTO, Long userId, LocationDTO location) {
 
 
             if (!rateLimitService.canUserComment(userId)) {
@@ -55,6 +56,14 @@
 
 
             Comment comment = new Comment(commentDTO.getText(), user, video);
+
+            if (location != null) {
+                comment.setLatitude(location.getLatitude());
+                comment.setLongitude(location.getLongitude());
+                comment.setLocationName(location.getLocationName());
+                comment.setIsLocationApproximated(location.getIsApproximated());
+            }
+
             Comment savedComment = commentRepository.save(comment);
 
             return convertToDTO(savedComment);

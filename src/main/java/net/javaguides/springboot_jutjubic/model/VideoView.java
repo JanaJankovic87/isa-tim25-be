@@ -21,6 +21,18 @@ public class VideoView {
     @Column(name = "viewed_at", nullable = false)
     private LocalDateTime viewedAt;
 
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
+    @Column(name = "location_name")
+    private String locationName;
+
+    @Column(name = "is_location_approximated")
+    private Boolean isLocationApproximated = false;
+
     // Constructors
 
     public VideoView() {
@@ -31,6 +43,14 @@ public class VideoView {
         this.userId = userId;
         this.videoId = videoId;
         this.viewedAt = LocalDateTime.now();
+    }
+
+    public VideoView(Long userId, Long videoId, Double latitude, Double longitude) {
+        this.userId = userId;
+        this.videoId = videoId;
+        this.viewedAt = LocalDateTime.now();
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 
     // Getters and Setters
@@ -65,5 +85,37 @@ public class VideoView {
 
     public void setViewedAt(LocalDateTime viewedAt) {
         this.viewedAt = viewedAt;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+    }
+
+    public String getLocationName() {
+        return locationName;
+    }
+
+    public void setLocationName(String locationName) {
+        this.locationName = locationName;
+    }
+
+    public Boolean getIsLocationApproximated() {
+        return isLocationApproximated;
+    }
+
+    public void setIsLocationApproximated(Boolean isLocationApproximated) {
+        this.isLocationApproximated = isLocationApproximated;
     }
 }

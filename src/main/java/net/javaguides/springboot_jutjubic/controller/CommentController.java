@@ -1,11 +1,14 @@
 package net.javaguides.springboot_jutjubic.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import net.javaguides.springboot_jutjubic.dto.CommentDTO;
+import net.javaguides.springboot_jutjubic.dto.LocationDTO;
 import net.javaguides.springboot_jutjubic.model.User;
 import net.javaguides.springboot_jutjubic.service.CommentRateLimitService;
 import net.javaguides.springboot_jutjubic.service.CommentService;
 import net.javaguides.springboot_jutjubic.service.UserService;
+import net.javaguides.springboot_jutjubic.service.impl.GeolocationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,10 +41,51 @@ public class CommentController {
     @Autowired
     private CommentRateLimitService rateLimitService;
 
+    @Autowired
+    private GeolocationService geolocationService;
+
+    private LocationDTO resolveLocation(Double lat, Double lng, HttpServletRequest request) {
+        // sa gps
+        if (lat != null && lng != null) {
+            LocationDTO location = new LocationDTO(lat, lng, false);
+            location.setLocationName("GPS location");
+            return location;
+        }
+
+        // ip geolocation
+        String ipAddress = extractClientIP(request);
+
+        LocationDTO location = geolocationService.getLocationFromIP(ipAddress);
+
+        if (location == null) {
+            return null;
+        }
+
+        return location;
+    }
+
+    private String extractClientIP(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip != null ? ip : "127.0.0.1";
+    }
+
     @PostMapping
     public ResponseEntity<?> createComment(
             @PathVariable Long videoId,
-            @Valid @RequestBody CommentDTO commentDTO) {
+            @Valid @RequestBody CommentDTO commentDTO,
+            HttpServletRequest request) {
 
         try {
             User currentUser = getCurrentUser();
@@ -56,7 +100,21 @@ public class CommentController {
                 return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error);
             }
 
-            CommentDTO createdComment = commentService.createComment(videoId, commentDTO, currentUser.getId());
+            LocationDTO location;
+            if (commentDTO.getLatitude() != null && commentDTO.getLongitude() != null) {
+                location = new LocationDTO(
+                    commentDTO.getLatitude(),
+                    commentDTO.getLongitude(),
+                    false
+                );
+                location.setLocationName(commentDTO.getLocationName() != null ?
+                    commentDTO.getLocationName() : "GPS Location");
+            } else {
+                String ipAddress = extractClientIP(request);
+                location = geolocationService.getLocationFromIP(ipAddress);
+            }
+
+            CommentDTO createdComment = commentService.createComment(videoId, commentDTO, currentUser.getId(), location);
 
             Map<String, Object> response = new HashMap<>();
             response.put("id", createdComment.getId());
