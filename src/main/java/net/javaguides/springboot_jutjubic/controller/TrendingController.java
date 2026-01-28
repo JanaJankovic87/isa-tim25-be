@@ -10,9 +10,6 @@ import net.javaguides.springboot_jutjubic.dto.LocationDTO;
 import net.javaguides.springboot_jutjubic.service.impl.GeolocationService;
 import net.javaguides.springboot_jutjubic.service.impl.LocalTrendingService;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/trending")
 @CrossOrigin(origins = "http://localhost:4200")
@@ -27,7 +24,17 @@ public class TrendingController {
     private GeolocationService geolocationService;
 
     /**
-     * GLAVNI ENDPOINT - Lokalni trending sa default strategijom (CACHED_60S)
+      Lokalni trending sa default strategijom (CACHED_60S)
+
+      PRIMERI POZIVA:
+       Sa GPS koordinatama:
+         GET /api/trending/local?lat=44.7866&lng=20.4489&radiusKm=50&limit=10
+
+       Bez GPS (koristi IP geolocation):
+         GET /api/trending/local?radiusKm=50&limit=10
+
+       Default parametri:
+        GET /api/trending/local
      */
     @GetMapping("/local")
     public ResponseEntity<?> getLocalTrending(
@@ -60,7 +67,13 @@ public class TrendingController {
     }
 
     /**
-     * PERFORMANCE TESTING - Test specific caching strategy
+      PERFORMANCE TESTING - Test specific caching strategy
+
+      PRIMER:
+      GET /api/trending/test-strategy?strategy=REAL_TIME&lat=44.7866&lng=20.4489
+      GET /api/trending/test-strategy?strategy=CACHED_30S
+      GET /api/trending/test-strategy?strategy=CACHED_60S
+      GET /api/trending/test-strategy?strategy=CACHED_5MIN
      */
     @GetMapping("/test-strategy")
     public ResponseEntity<?> testStrategy(
@@ -99,7 +112,11 @@ public class TrendingController {
     }
 
     /**
-     * PERFORMANCE TESTING - Run complete performance test
+      PERFORMANCE TESTING - Run complete performance test
+
+      PRIMER:
+      GET /api/trending/performance-test?iterations=100&lat=44.7866&lng=20.4489
+
      */
     @GetMapping("/performance-test")
     public ResponseEntity<?> runPerformanceTest(
@@ -149,7 +166,10 @@ public class TrendingController {
     }
 
     /**
-     * Get performance metrics
+      Get performance metrics
+
+      PRIMER:
+      GET /api/trending/metrics
      */
     @GetMapping("/metrics")
     public ResponseEntity<LocalTrendingService.PerformanceMetrics> getMetrics() {
@@ -157,7 +177,10 @@ public class TrendingController {
     }
 
     /**
-     * Reset metrics
+      Reset metrics
+
+      PRIMER:
+      POST /api/trending/metrics/reset
      */
     @PostMapping("/metrics/reset")
     public ResponseEntity<Void> resetMetrics() {
