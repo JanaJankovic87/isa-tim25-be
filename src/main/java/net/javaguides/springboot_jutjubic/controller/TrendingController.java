@@ -23,19 +23,7 @@ public class TrendingController {
     @Autowired
     private GeolocationService geolocationService;
 
-    /**
-      Lokalni trending sa default strategijom (CACHED_60S)
 
-      PRIMERI POZIVA:
-       Sa GPS koordinatama:
-         GET /api/trending/local?lat=44.7866&lng=20.4489&radiusKm=50&limit=10
-
-       Bez GPS (koristi IP geolocation):
-         GET /api/trending/local?radiusKm=50&limit=10
-
-       Default parametri:
-        GET /api/trending/local
-     */
     @GetMapping("/local")
     public ResponseEntity<?> getLocalTrending(
             @RequestParam(required = false) Double lat,
@@ -66,15 +54,7 @@ public class TrendingController {
         }
     }
 
-    /**
-      PERFORMANCE TESTING - Test specific caching strategy
-
-      PRIMER:
-      GET /api/trending/test-strategy?strategy=REAL_TIME&lat=44.7866&lng=20.4489
-      GET /api/trending/test-strategy?strategy=CACHED_30S
-      GET /api/trending/test-strategy?strategy=CACHED_60S
-      GET /api/trending/test-strategy?strategy=CACHED_5MIN
-     */
+    // test specificne strategije
     @GetMapping("/test-strategy")
     public ResponseEntity<?> testStrategy(
             @RequestParam String strategy,
@@ -111,13 +91,7 @@ public class TrendingController {
         return ResponseEntity.ok(result);
     }
 
-    /**
-      PERFORMANCE TESTING - Run complete performance test
-
-      PRIMER:
-      GET /api/trending/performance-test?iterations=100&lat=44.7866&lng=20.4489
-
-     */
+    // run test
     @GetMapping("/performance-test")
     public ResponseEntity<?> runPerformanceTest(
             @RequestParam(defaultValue = "50") int iterations,
@@ -165,34 +139,20 @@ public class TrendingController {
         return ResponseEntity.ok(localTrendingService.getMetrics());
     }
 
-    /**
-      Get performance metrics
-
-      PRIMER:
-      GET /api/trending/metrics
-     */
+    // Metrika
     @GetMapping("/metrics")
     public ResponseEntity<LocalTrendingService.PerformanceMetrics> getMetrics() {
         return ResponseEntity.ok(localTrendingService.getMetrics());
     }
 
-    /**
-      Reset metrics
-
-      PRIMER:
-      POST /api/trending/metrics/reset
-     */
+    //reset metrics
     @PostMapping("/metrics/reset")
     public ResponseEntity<Void> resetMetrics() {
         localTrendingService.resetMetrics();
         return ResponseEntity.ok().build();
     }
 
-    // ==================== HELPER METHODS ====================
 
-    /**
-     * Get user location from GPS or IP
-     */
     private LocationDTO getUserLocation(Double lat, Double lng, HttpServletRequest request) {
         // SCENARIO 1: Korisnik ODOBRIO browser lokaciju
         if (lat != null && lng != null) {
@@ -208,9 +168,7 @@ public class TrendingController {
         return geolocationService.getLocationFromIP(ipAddress);
     }
 
-    /**
-     * Extract client IP from request headers
-     */
+    // Ip adresa iz headera
     private String extractClientIP(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");
         if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {

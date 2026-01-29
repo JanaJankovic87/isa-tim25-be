@@ -16,13 +16,9 @@ public class GeolocationService {
     public GeolocationService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
-
-    /**
-     * Dobija lokaciju korisnika iz IP adrese
-     * Za localhost vraća Beograd (za testiranje)
-     */
+    
     public LocationDTO getLocationFromIP(String ipAddress) {
-        // Localhost ili private IP → vrati Beograd za testiranje
+        // Localhost ili private IP
         if (isLocalIP(ipAddress)) {
             logger.info("✓ Local IP detected: {}, using Belgrade for testing", ipAddress);
             LocationDTO location = new LocationDTO(44.7866, 20.4489, true);
@@ -56,48 +52,6 @@ public class GeolocationService {
         LocationDTO location = new LocationDTO(44.7866, 20.4489, true);
         location.setLocationName("Belgrade, Serbia");
         return location;
-    }
-
-    /**
-     * Dobija lokaciju korisnika iz Address objekta
-     */
-    public LocationDTO getLocationFromAddress(Address address) {
-        if (address == null) {
-            logger.warn("Address is null");
-            return null;
-        }
-
-        if (address.getLatitude() != null && address.getLongitude() != null) {
-            LocationDTO location = new LocationDTO(
-                    address.getLatitude(),
-                    address.getLongitude(),
-                    false
-            );
-            location.setLocationName(address.getCity() + ", " + address.getCountry());
-            logger.info("✓ Location from address: {}", location.getLocationName());
-            return location;
-        }
-
-        logger.warn("Address exists but has no coordinates");
-        return null;
-    }
-
-    /**
-     * Računa distancu između korisnika i videa (Haversine formula)
-     */
-    public double calculateDistance(double userLat, double userLng, double videoLat, double videoLng) {
-        final int EARTH_RADIUS_KM = 6371;
-
-        double latDistance = Math.toRadians(videoLat - userLat);
-        double lonDistance = Math.toRadians(videoLng - userLng);
-
-        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
-                + Math.cos(Math.toRadians(userLat)) * Math.cos(Math.toRadians(videoLat))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
-
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        return EARTH_RADIUS_KM * c;
     }
 
     private boolean isLocalIP(String ip) {
