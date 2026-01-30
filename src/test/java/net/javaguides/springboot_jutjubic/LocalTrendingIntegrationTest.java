@@ -100,12 +100,11 @@ public class LocalTrendingIntegrationTest {
     public void testNeighborsInSameStreet() {
         System.out.println("\n TEST 2: Neighbors in Same Street");
 
-
         LocationDTO neighborA = new LocationDTO(44.7866, 20.4489, false);
         neighborA.setLocationName("Komšija A - Bulevar 73");
 
-        LocationDTO neighborB = new LocationDTO(44.7867, 20.4490, false);
-        neighborB.setLocationName("Komšija B - Bulevar 75");
+        LocationDTO neighborB = new LocationDTO(44.7884, 20.4507, false);
+        neighborB.setLocationName("Komšija B - Bulevar 85");
 
         double distance = testDataGenerator.haversine(
                 neighborA.getLatitude(), neighborA.getLongitude(),
@@ -118,17 +117,11 @@ public class LocalTrendingIntegrationTest {
         LocalTrendingService.TrendingResult trendingB =
                 trendingService.getRealTimeTrending(neighborB, 50, 10);
 
-
-
         System.out.println("\n PROVERA 1: Broj videja");
         assertEquals(trendingA.getVideos().size(), trendingB.getVideos().size(),
                 "Komšije treba da dobiju ISTI broj videja");
 
-
-
-
         System.out.println("\n PROVERA 2: Identičnost video zapisa");
-        int sameVideos = 0;
 
         for (int i = 0; i < Math.min(trendingA.getVideos().size(), trendingB.getVideos().size()); i++) {
             Long idA = trendingA.getVideos().get(i).getVideoId();
@@ -136,12 +129,9 @@ public class LocalTrendingIntegrationTest {
 
             assertEquals(idA, idB,
                     "Video na poziciji " + (i+1) + " treba da bude ISTI");
-
-            if (idA.equals(idB)) {
-                sameVideos++;
-            }
         }
 
+        System.out.println(" Svi video zapisi su identični");
 
         System.out.println("\n PROVERA 3: Score razlika");
         double totalDiff = 0;
@@ -159,10 +149,8 @@ public class LocalTrendingIntegrationTest {
 
         double avgDiff = trendingA.getVideos().size() > 0 ? totalDiff / trendingA.getVideos().size() : 0;
 
-
         assertTrue(avgDiff < 1.0,
                 "Prosečna razlika u score-u treba da bude < 1% (actual: " + avgDiff + "%)");
-
 
         finalReport.append(String.format("TEST 2 - Neighbors: %d videos, %.1fm apart, %.3f%% score diff\n",
                 trendingA.getVideos().size(), distance * 1000, avgDiff));
@@ -184,15 +172,20 @@ public class LocalTrendingIntegrationTest {
         LocalTrendingService.TrendingResult result10km =
                 trendingService.getRealTimeTrending(location, 10, 100);
 
+        System.out.println(" 3km: " + result3km.getVideos().size() + " videos");
+        System.out.println(" 10km: " + result10km.getVideos().size() + " videos");
 
         assertTrue(result3km.getVideos().size() > 0, "3km mora imati videje");
 
+        int difference = result10km.getVideos().size() - result3km.getVideos().size();
 
         assertTrue(result10km.getVideos().size() >= result3km.getVideos().size(),
                 String.format("10km (%d) >= 3km (%d)", result10km.getVideos().size(), result3km.getVideos().size()));
 
-        finalReport.append(String.format("TEST 3 - Concentrated: 3km=%d, 10km=%d\n",
-                result3km.getVideos().size(), result10km.getVideos().size()));
+        System.out.println(" Razlika: " + difference + " videa");
+
+        finalReport.append(String.format("TEST 3 - Concentrated: 3km=%d, 10km=%d (diff: %d)\n",
+                result3km.getVideos().size(), result10km.getVideos().size(), difference));
 
         testDataGenerator.cleanupTestData();
     }
@@ -207,12 +200,10 @@ public class LocalTrendingIntegrationTest {
 
         testDataGenerator.generateDistributedScenario();
 
-        // BEOGRAD (centar Srbije)
         LocationDTO belgrade = new LocationDTO(44.7866, 20.4489, false);
         LocalTrendingService.TrendingResult belgradeTrending =
                 trendingService.getRealTimeTrending(belgrade, 200, 100);
 
-        // ZAGREB (300km od Beograda)
         LocationDTO zagreb = new LocationDTO(45.8150, 15.9819, false);
         LocalTrendingService.TrendingResult zagrebTrending =
                 trendingService.getRealTimeTrending(zagreb, 200, 100);
@@ -223,14 +214,38 @@ public class LocalTrendingIntegrationTest {
         assertNotNull(belgradeTrending.getVideos());
         assertNotNull(zagrebTrending.getVideos());
 
+        int compareCount = Math.min(10, Math.min(belgradeTrending.getVideos().size(),
+                zagrebTrending.getVideos().size()));
 
-        assertNotEquals(belgradeTrending.getVideos().size(), zagrebTrending.getVideos().size(),
-                "Beograd i Zagreb treba da imaju razliciti broj trending videa");
+        java.util.Set<Long> belgradeTop10 = belgradeTrending.getVideos().stream()
+                .limit(compareCount)
+                .map(v -> v.getVideoId())
+                .collect(java.util.stream.Collectors.toSet());
+
+        java.util.Set<Long> zagrebTop10 = zagrebTrending.getVideos().stream()
+                .limit(compareCount)
+                .map(v -> v.getVideoId())
+                .collect(java.util.stream.Collectors.toSet());
+
+        int matching = 0;
+        for (Long id : belgradeTop10) {
+            if (zagrebTop10.contains(id)) {
+                matching++;
+            }
+        }
+
+        double matchPercentage = compareCount > 0 ? (double) matching / compareCount * 100 : 0;
+
+        System.out.println(" Top " + compareCount + " match: " + matching + "/" + compareCount +
+                " (" + String.format("%.1f", matchPercentage) + "%)");
+
+        assertTrue(matchPercentage < 50.0,
+                String.format("Različiti gradovi treba da imaju <50%% poklapanje (actual: %.1f%%)", matchPercentage));
 
         System.out.println(" Different cities return different trending");
 
-        finalReport.append(String.format("TEST 4 - Distributed: Beograd=%d, Zagreb=%d (different)\n",
-                belgradeTrending.getVideos().size(), zagrebTrending.getVideos().size()));
+        finalReport.append(String.format("TEST 4 - Distributed: Beograd=%d, Zagreb=%d (%.1f%% match)\n",
+                belgradeTrending.getVideos().size(), zagrebTrending.getVideos().size(), matchPercentage));
 
         testDataGenerator.cleanupTestData();
     }
