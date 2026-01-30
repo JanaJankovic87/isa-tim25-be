@@ -132,7 +132,7 @@ public class LocalTrendingService {
     //  PUBLIC API
 
     /**
-     * MAIN METHOD - Cached trending with 60s TTL
+       Cached trending with 60s TTL
      */
     public TrendingResult getLocalTrending(LocationDTO userLocation, int radiusKm, int limit) {
         return getCachedTrending60s(userLocation, radiusKm, limit);
