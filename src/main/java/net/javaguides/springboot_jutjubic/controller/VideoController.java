@@ -433,7 +433,7 @@ public class VideoController {
                         .body(resource);
             }
 
-          
+
             Video video = videoService.findById(id);
             Resource resource = new FileSystemResource(
                     Paths.get(video.getVideoPath()));

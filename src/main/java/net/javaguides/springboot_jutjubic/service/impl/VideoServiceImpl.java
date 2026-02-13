@@ -177,7 +177,8 @@ public class VideoServiceImpl implements VideoService {
 
     @Override
     public Video findById(Long id) {
-        return videoRepository.findById(id).orElse(null);
+        return videoRepository.findByIdWithComments(id)
+                .orElse(videoRepository.findById(id).orElse(null));
     }
 
     @Override

@@ -62,8 +62,7 @@ public class SeedTranscodingRunner {
                 continue;
             }
 
-            video.setTranscodingStatus(Video.TranscodingStatus.PENDING);
-            videoRepository.save(video);
+
             transcodingProducer.sendTranscodingRequest(video.getId(), normalizedPath);
             count++;
             logger.info("Transcoding request sent for video ID={}", video.getId());
