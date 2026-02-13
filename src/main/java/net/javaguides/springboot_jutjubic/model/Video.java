@@ -6,12 +6,19 @@ import java.util.ArrayList;
 import java.util.List;
 import jakarta.persistence.*;
 
+
+
+
+
 @Entity
 @Table(name = "VIDEO_POSTS")
 @NamedQuery(name = "VideoPost.findByUserId",
         query = "select v from Video v where v.userId=?1")
 public class Video implements Serializable {
 
+    public enum TranscodingStatus {
+        PENDING, PROCESSING, COMPLETED, FAILED
+    }
     private static final long serialVersionUID = 1L;
 
     @Id
@@ -34,6 +41,16 @@ public class Video implements Serializable {
 
     @Column(name = "video_path")
     private String videoPath;
+
+    @Column(name = "original_video_path")
+    private String originalVideoPath;
+
+    @Column(name = "transcoded_dir")
+    private String transcodedDir;
+
+    @Column(name = "transcoding_status")
+    @Enumerated(EnumType.STRING)
+    private TranscodingStatus transcodingStatus = TranscodingStatus.PENDING;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -183,6 +200,30 @@ public class Video implements Serializable {
 
     public void setComments(List<Comment> comments) {
         this.comments = comments;
+    }
+
+    public String getOriginalVideoPath() {
+        return originalVideoPath;
+    }
+
+    public void setOriginalVideoPath(String originalVideoPath) {
+        this.originalVideoPath = originalVideoPath;
+    }
+
+    public String getTranscodedDir() {
+        return transcodedDir;
+    }
+
+    public void setTranscodedDir(String transcodedDir) {
+        this.transcodedDir = transcodedDir;
+    }
+
+
+    public TranscodingStatus getTranscodingStatus() {
+        return transcodingStatus;
+    }
+    public void setTranscodingStatus(TranscodingStatus transcodingStatus) {
+        this.transcodingStatus = transcodingStatus;
     }
 
     @Override
