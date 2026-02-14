@@ -5,9 +5,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import net.javaguides.springboot_jutjubic.dto.LocationDTO;
 import net.javaguides.springboot_jutjubic.dto.TrendingVideoDTO;
 import net.javaguides.springboot_jutjubic.service.impl.GeolocationService;
+import net.javaguides.springboot_jutjubic.service.impl.TranscodingProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,9 +24,15 @@ import net.javaguides.springboot_jutjubic.model.Video;
 import net.javaguides.springboot_jutjubic.model.User;
 import net.javaguides.springboot_jutjubic.service.VideoService;
 import net.javaguides.springboot_jutjubic.service.UserService;
-
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.io.IOException;
 import java.util.List;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 
 @RestController
 @RequestMapping(value = "/api/videos")
@@ -40,6 +48,12 @@ public class VideoController {
     @Autowired
     private GeolocationService geolocationService;
 
+    @Autowired
+    private TranscodingProducer transcodingProducer;
+
+    @Value("${app.transcoding.output-dir:uploads/transcoded}")
+    private String transcodedOutputDir;
+
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -52,12 +66,10 @@ public class VideoController {
 
         String username = null;
 
-        // UserDetails
         if (authentication.getPrincipal() instanceof UserDetails) {
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
             username = userDetails.getUsername();
         }
-        // username string
         else if (authentication.getPrincipal() instanceof String) {
             username = (String) authentication.getPrincipal();
         }
@@ -76,14 +88,12 @@ public class VideoController {
     }
 
     private LocationDTO resolveLocation(Double lat, Double lng, HttpServletRequest request) {
-        // sa gps
         if (lat != null && lng != null) {
             LocationDTO location = new LocationDTO(lat, lng, false);
             location.setLocationName("GPS location");
             return location;
         }
 
-        // ip geolocation
         String ipAddress = extractClientIP(request);
 
         LocationDTO location = geolocationService.getLocationFromIP(ipAddress);
@@ -112,7 +122,6 @@ public class VideoController {
         return ip != null ? ip : "127.0.0.1";
     }
 
-    // POST - Upload videa
     @PostMapping(value = "/", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> addVideo(
             @RequestParam("data") String dataJson,
@@ -122,10 +131,8 @@ public class VideoController {
         try {
             logger.info("Primljen zahtev za kreiranje video objave");
 
-            // Parse DTO iz JSON-a
             VideoDTO dto = objectMapper.readValue(dataJson, VideoDTO.class);
 
-            // Validacija DTO-a
             if (dto.getTitle() == null || dto.getTitle().trim().isEmpty()) {
                 logger.error("Validacija nije prošla: Title is required");
                 return new ResponseEntity<>("Title is required", HttpStatus.BAD_REQUEST);
@@ -145,14 +152,12 @@ public class VideoController {
             User currentUser = getCurrentUser();
             logger.info("Korisnik {} kreira video", currentUser.getUsername());
 
-            // DTO -> Entity konverzija sa trenutnim korisnikom
             Video video = new Video(dto.getTitle(), dto.getDescription(),
-                    dto.getTags(), currentUser.getId()); //  Koristi ID trenutnog korisnika
+                    dto.getTags(), currentUser.getId());
             video.setLocation(dto.getLocation());
 
             logger.info("Pokušavam da sačuvam video: {}", video.getTitle());
 
-            // Čuvanje sa transakcijom
             Video savedVideo = videoService.save(video, thumbnail, videoFile);
 
             logger.info("Video uspešno sačuvan sa ID: {}", savedVideo.getId());
@@ -170,7 +175,6 @@ public class VideoController {
         }
     }
 
-    // PUT - Izmena videa
     @PutMapping(value = "/{id}",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
@@ -181,7 +185,6 @@ public class VideoController {
         return new ResponseEntity<>(updatedVideo, HttpStatus.OK);
     }
 
-    // DELETE - Brisanje videa
     @DeleteMapping(value = "/{id}")
     public ResponseEntity<Void> deleteVideo(@PathVariable Long id) {
         logger.info("Brisanje videa sa ID: {}", id);
@@ -189,7 +192,7 @@ public class VideoController {
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
-    // GET - Lista videa (JAVNO)
+
     @GetMapping(value = "/")
     public ResponseEntity<List<Video>> getVideos() {
         logger.info("Dobavljanje svih videa sortiranih po datumu");
@@ -223,19 +226,27 @@ public class VideoController {
 
 
     @GetMapping(value = "/{id}/video")
-    public ResponseEntity<byte[]> getVideoFile(@PathVariable Long id) {
+    public ResponseEntity<Resource> getVideoFile(
+            @PathVariable Long id,
+            @RequestHeader(value = "Range", required = false) String rangeHeader) {
         try {
-            logger.info("Dobavljanje video stream-a za ID: {}", id);
-            byte[] video = videoService.getVideoFile(id);
+            Video video = videoService.findById(id);
+            if (video == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Path videoPath = Paths.get(video.getVideoPath());
+            Resource resource = new FileSystemResource(videoPath);
 
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType("video/mp4"))
+                    .header("Accept-Ranges", "bytes")
                     .header("Content-Disposition", "inline; filename=\"video.mp4\"")
-                    .body(video);
+                    .body(resource);
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             logger.error("Greška pri učitavanju video stream-a za ID: {}", id, e);
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            return ResponseEntity.internalServerError().build();
         }
     }
 
@@ -398,6 +409,72 @@ public class VideoController {
     @GetMapping("/trending")
     public ResponseEntity<List<TrendingVideoDTO>> getTrendingVideos() {
         return ResponseEntity.ok(videoService.getTrendingVideos());
+    }
+
+    @GetMapping(value = "/{id}/video/{preset}")
+    public ResponseEntity<Resource> getVideoFileByPreset(
+            @PathVariable Long id,
+            @PathVariable String preset) {
+        try {
+            if (!preset.equals("720p") && !preset.equals("480p")) {
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            }
+
+            String transcodedPath = transcodedOutputDir + "/" + id + "/" + preset + ".mp4";
+            Path videoPath = Paths.get(transcodedPath);
+
+            if (Files.exists(videoPath)) {
+                Resource resource = new FileSystemResource(videoPath);
+                return ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType("video/mp4"))
+                        .header("Accept-Ranges", "bytes")
+                        .header("Content-Disposition",
+                                "inline; filename=\"video_" + preset + ".mp4\"")
+                        .body(resource);
+            }
+
+
+            Video video = videoService.findById(id);
+            Resource resource = new FileSystemResource(
+                    Paths.get(video.getVideoPath()));
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("video/mp4"))
+                    .header("Accept-Ranges", "bytes")
+                    .header("X-Transcoded", "false")
+                    .body(resource);
+
+        } catch (Exception e) {
+            logger.error("Greška pri učitavanju video stream-a", e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
+
+    @GetMapping("/{id}/presets")
+    public ResponseEntity<Map<String, Boolean>> getAvailablePresets(@PathVariable Long id) {
+        Map<String, Boolean> presets = new LinkedHashMap<>();
+
+        String[] qualities = { "720p", "480p"};
+        for (String quality : qualities) {
+            java.nio.file.Path path = Paths.get(transcodedOutputDir + "/" + id + "/" + quality + ".mp4");
+            presets.put(quality, Files.exists(path));
+        }
+
+        return ResponseEntity.ok(presets);
+    }
+
+    @GetMapping("/{id}/transcoding-status")
+    public ResponseEntity<Map<String, String>> getTranscodingStatus(@PathVariable Long id) {
+        Video video = videoService.findById(id);
+        if (video == null) {
+            return ResponseEntity.notFound().build();
+        }
+        Map<String, String> response = new LinkedHashMap<>();
+        response.put("status", video.getTranscodingStatus() != null
+                ? video.getTranscodingStatus().name()
+                : "PENDING");
+        return ResponseEntity.ok(response);
     }
 
 }

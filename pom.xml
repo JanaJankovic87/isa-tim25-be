@@ -110,18 +110,43 @@
 			<artifactId>spring-boot-starter-cache</artifactId>
 		</dependency>
 
-		<!-- JUnit 5 for testing -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
 
 		<!-- H2 Database for testing -->
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
 			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-amqp</artifactId>
+		</dependency>
+
+		<!-- ===== NOVE JAVE2 DEPENDENCIES ===== -->
+		<dependency>
+			<groupId>ws.schild</groupId>
+			<artifactId>jave-core</artifactId>
+			<version>3.5.0</version>
+		</dependency>
+
+		<!-- Platform-specific FFmpeg binaries -->
+		<dependency>
+			<groupId>ws.schild</groupId>
+			<artifactId>jave-nativebin-win64</artifactId>
+			<version>3.5.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>ws.schild</groupId>
+			<artifactId>jave-nativebin-linux64</artifactId>
+			<version>3.5.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>ws.schild</groupId>
+			<artifactId>jave-nativebin-osx64</artifactId>
+			<version>3.5.0</version>
 		</dependency>
 
 	</dependencies>
