@@ -22,6 +22,9 @@
     import net.javaguides.springboot_jutjubic.repository.VideoViewRepository;
     import net.javaguides.springboot_jutjubic.model.Comment;
     import net.javaguides.springboot_jutjubic.repository.CommentRepository;
+    import net.javaguides.springboot_jutjubic.service.UploadEventPublisher;
+    import net.javaguides.springboot_jutjubic.messages.UploadEventDto;
+    import java.util.stream.Collectors;
 
     import java.io.IOException;
     import java.nio.file.Files;
@@ -47,6 +50,9 @@
 
         @Autowired
         private CommentRepository commentRepository;
+
+        @Autowired(required = false)
+        private UploadEventPublisher uploadEventPublisher;
 
         @Value("${app.upload.dir:uploads}")
         private String uploadDir;
@@ -127,6 +133,19 @@
                 savedVideo = videoRepository.save(savedVideo);
 
                 logger.info("Video objava uspešno kreirana: {}", savedVideo);
+
+                // ===== PUBLISH TO RABBITMQ =====
+                if (uploadEventPublisher != null) {
+                    try {
+                        publishVideoUploadEvent(savedVideo);
+                    } catch (Exception e) {
+                        logger.error("Failed to publish upload event to RabbitMQ", e);
+                        // Ne bacaj exception - video je već sačuvan
+                    }
+                } else {
+                    logger.warn("UploadEventPublisher is not available - skipping RabbitMQ publish");
+                }
+
                 return savedVideo;
 
             } catch (Exception e) {
@@ -422,6 +441,41 @@
         @Override
         public List<Comment> getAllComments(Long videoId) {
             return commentRepository.findByVideoId(videoId);
+        }
+
+        private void publishVideoUploadEvent(Video video) {
+            UploadEventDto eventDto = new UploadEventDto();
+            eventDto.setVideoId(video.getId().toString());
+            eventDto.setTitle(video.getTitle());
+
+            // File size - calculate from video file if possible
+            try {
+                Path videoPath = Paths.get(video.getVideoPath());
+                if (Files.exists(videoPath)) {
+                    eventDto.setFileSize(Files.size(videoPath));
+                } else {
+                    eventDto.setFileSize(0L);
+                }
+            } catch (Exception e) {
+                logger.warn("Could not determine video file size", e);
+                eventDto.setFileSize(0L);
+            }
+
+            eventDto.setAuthorId(video.getUserId().toString());
+            eventDto.setAuthorName("User" + video.getUserId()); // Fallback, možeš bolje kasnije
+            eventDto.setThumbnailUrl(video.getThumbnailPath() != null ? video.getThumbnailPath() : "");
+            eventDto.setVideoUrl(video.getVideoPath() != null ? video.getVideoPath() : "");
+            eventDto.setTimestamp(System.currentTimeMillis());
+
+            // Tags - convert Set<String> to List<String> if video has tags
+            if (video.getTags() != null) {
+                eventDto.setTags(new ArrayList<>(video.getTags()));
+            } else {
+                eventDto.setTags(new ArrayList<>());
+            }
+
+            uploadEventPublisher.publishJson(eventDto);
+            logger.info("✅ Published video upload event to RabbitMQ: {}", video.getTitle());
         }
     }
 
