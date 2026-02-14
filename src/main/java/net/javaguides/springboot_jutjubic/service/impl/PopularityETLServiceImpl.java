@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.annotation.PostConstruct;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -48,6 +49,25 @@ public class PopularityETLServiceImpl implements PopularityETLService {
 
     @Value("${etl.pipeline.top.count:3}")
     private int topCount;
+
+    // Automatski pokreće pipeline pri startu aplikacije ako nema podataka u bazi
+    @PostConstruct
+    public void initializePopularityData() {
+        try {
+            // Proveri da li postoje rezultati u bazi
+            long count = popularityResultRepository.count();
+
+            if (count == 0) {
+
+                // Pokreni pipeline
+                runManually();
+
+            }
+        } catch (Exception e) {
+            logger.error("Greška pri inicijalnom pokretanju ETL pipeline-a: {}", e.getMessage());
+            // Ne bacamo exception da ne bi sprečili pokretanje aplikacije
+        }
+    }
 
     @Override
     @Scheduled(cron = "${etl.pipeline.cron:0 00 20 * * ?}")
