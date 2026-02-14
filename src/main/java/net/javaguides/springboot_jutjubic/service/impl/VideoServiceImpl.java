@@ -5,6 +5,9 @@
     import net.javaguides.springboot_jutjubic.model.VideoLike;
     import net.javaguides.springboot_jutjubic.model.VideoView;
     import net.javaguides.springboot_jutjubic.service.VideoService;
+    import net.javaguides.springboot_jutjubic.service.UploadEventPublisher;
+    import net.javaguides.springboot_jutjubic.messages.UploadEventDto;
+    import net.javaguides.springboot_jutjubic.messages.UploadEventProto.UploadEvent;
     import org.slf4j.Logger;
     import org.slf4j.LoggerFactory;
     import org.springframework.beans.factory.annotation.Autowired;
@@ -16,15 +19,11 @@
     import org.springframework.transaction.annotation.Transactional;
     import org.springframework.web.multipart.MultipartFile;
     import net.javaguides.springboot_jutjubic.model.Video;
-    import net.javaguides.springboot_jutjubic.model.VideoView;
     import net.javaguides.springboot_jutjubic.repository.VideoRepository;
     import net.javaguides.springboot_jutjubic.repository.VideoLikeRepository;
     import net.javaguides.springboot_jutjubic.repository.VideoViewRepository;
     import net.javaguides.springboot_jutjubic.model.Comment;
     import net.javaguides.springboot_jutjubic.repository.CommentRepository;
-    import net.javaguides.springboot_jutjubic.service.UploadEventPublisher;
-    import net.javaguides.springboot_jutjubic.messages.UploadEventDto;
-    import java.util.stream.Collectors;
 
     import java.io.IOException;
     import java.nio.file.Files;
@@ -462,7 +461,7 @@
             }
 
             eventDto.setAuthorId(video.getUserId().toString());
-            eventDto.setAuthorName("User" + video.getUserId()); // Fallback, možeš bolje kasnije
+            eventDto.setAuthorName("User" + video.getUserId());
             eventDto.setThumbnailUrl(video.getThumbnailPath() != null ? video.getThumbnailPath() : "");
             eventDto.setVideoUrl(video.getVideoPath() != null ? video.getVideoPath() : "");
             eventDto.setTimestamp(System.currentTimeMillis());
@@ -474,8 +473,30 @@
                 eventDto.setTags(new ArrayList<>());
             }
 
+            // 1. Slanje JSON poruke
             uploadEventPublisher.publishJson(eventDto);
-            logger.info("✅ Published video upload event to RabbitMQ: {}", video.getTitle());
+            System.out.println("✅ JSON POSLAT - Title: " + eventDto.getTitle());
+
+            // 2. Slanje PROTO poruke
+            UploadEvent protoEvent = mapToProto(eventDto);
+            uploadEventPublisher.publishProtobuf(protoEvent);
+            System.out.println("✅ PROTO POSLAT - Title: " + protoEvent.getTitle());
+
+            logger.info("✅ Published video upload event to RabbitMQ (JSON + PROTO): {}", video.getTitle());
+        }
+
+        private UploadEvent mapToProto(UploadEventDto dto) {
+            return UploadEvent.newBuilder()
+                    .setVideoId(dto.getVideoId())
+                    .setTitle(dto.getTitle())
+                    .setFileSize(dto.getFileSize())
+                    .setAuthorId(dto.getAuthorId())
+                    .setAuthorName(dto.getAuthorName())
+                    .setThumbnailUrl(dto.getThumbnailUrl())
+                    .setVideoUrl(dto.getVideoUrl())
+                    .setTimestamp(dto.getTimestamp())
+                    .addAllTags(dto.getTags())
+                    .build();
         }
     }
 

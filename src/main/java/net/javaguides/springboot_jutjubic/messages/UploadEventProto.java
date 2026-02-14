@@ -1,9 +1,9 @@
 package net.javaguides.springboot_jutjubic.messages;
 
-import com.google.protobuf.ByteString;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 public class UploadEventProto {
