@@ -16,7 +16,7 @@ public class GeolocationService {
     public GeolocationService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
-    
+
     public LocationDTO getLocationFromIP(String ipAddress) {
         // Localhost ili private IP
         if (isLocalIP(ipAddress)) {

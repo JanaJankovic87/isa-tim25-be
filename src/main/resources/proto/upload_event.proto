@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+option java_package = "net.javaguides.springboot_jutjubic.messages";
+option java_outer_classname = "UploadEventProto";
+
+message UploadEvent {
+  string video_id = 1;
+  string title = 2;
+  int64 file_size = 3;
+  string author_id = 4;
+  string author_name = 5;
+  string thumbnail_url = 6;
+  string video_url = 7;
+  int64 timestamp = 8;
+  repeated string tags = 9;
+}
