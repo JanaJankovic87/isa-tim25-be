@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>org.springframework.boot</groupId>
@@ -110,8 +110,12 @@
 			<artifactId>spring-boot-starter-cache</artifactId>
 		</dependency>
 
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
 
-		<!-- H2 Database for testing -->
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
@@ -123,18 +127,17 @@
 			<artifactId>spring-boot-starter-amqp</artifactId>
 		</dependency>
 
-		<!-- ===== NOVE JAVE2 DEPENDENCIES ===== -->
 		<dependency>
-			<groupId>ws.schild</groupId>
-			<artifactId>jave-core</artifactId>
-			<version>3.5.0</version>
+			<groupId>com.google.protobuf</groupId>
+			<artifactId>protobuf-java</artifactId>
+			<version>3.25.1</version>
 		</dependency>
 
-		<!-- Platform-specific FFmpeg binaries -->
+		<!-- JAVE (Java Audio Video Encoder) for video transcoding -->
 		<dependency>
 			<groupId>ws.schild</groupId>
-			<artifactId>jave-nativebin-win64</artifactId>
-			<version>3.5.0</version>
+			<artifactId>jave-all-deps</artifactId>
+			<version>3.3.1</version>
 		</dependency>
 
 		<dependency>
@@ -159,15 +162,35 @@
 
 	</dependencies>
 
-
 	<build>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			<plugin>
+				<groupId>com.github.os72</groupId>
+				<artifactId>protoc-jar-maven-plugin</artifactId>
+				<version>3.11.4</version>
+				<executions>
+					<execution>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<protocVersion>3.25.1</protocVersion>
+							<inputDirectories>
+								<include>src/main/resources/proto</include>
+							</inputDirectories>
+							<outputDirectory>${project.build.directory}/generated-sources/protobuf</outputDirectory>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
+
 	<repositories>
 		<repository>
 			<id>spring-snapshots</id>
@@ -178,6 +201,7 @@
 			</releases>
 		</repository>
 	</repositories>
+
 	<pluginRepositories>
 		<pluginRepository>
 			<id>spring-snapshots</id>
