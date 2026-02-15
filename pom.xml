@@ -132,6 +132,13 @@
 			<artifactId>protobuf-java</artifactId>
 			<version>3.25.1</version>
 		</dependency>
+
+		<!-- JAVE (Java Audio Video Encoder) for video transcoding -->
+		<dependency>
+			<groupId>ws.schild</groupId>
+			<artifactId>jave-all-deps</artifactId>
+			<version>3.3.1</version>
+		</dependency>
 	</dependencies>
 
 	<build>

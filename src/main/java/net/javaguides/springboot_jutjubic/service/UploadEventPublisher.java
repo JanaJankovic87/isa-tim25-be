@@ -3,9 +3,9 @@ package net.javaguides.springboot_jutjubic.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.javaguides.springboot_jutjubic.config.RabbitMQConfig;
 import net.javaguides.springboot_jutjubic.messages.UploadEventDto;
-import net.javaguides.springboot_jutjubic.messages.UploadEventProto;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
+import net.javaguides.springboot_jutjubic.messages.UploadEventProto;
 
 @Service
 public class UploadEventPublisher {

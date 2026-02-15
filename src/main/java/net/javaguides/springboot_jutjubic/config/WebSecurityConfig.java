@@ -70,8 +70,9 @@ public class WebSecurityConfig {
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/error").permitAll()
+                .requestMatchers("/api/test/**").permitAll()
+                .requestMatchers("/api/popularity/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/videos/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/videos/*/comments/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users/*/profile").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/videos/*/comments").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/videos/*/like").authenticated()
@@ -83,7 +84,7 @@ public class WebSecurityConfig {
                 .anyRequest().authenticated()
         );
 
-        http.cors(cors -> cors.configure(http));
+        http.cors(cors -> {});
         http.csrf(csrf -> csrf.disable());
 
         http.addFilterBefore(

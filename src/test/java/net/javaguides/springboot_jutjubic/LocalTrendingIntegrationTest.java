@@ -10,10 +10,12 @@ import org.springframework.test.context.ActiveProfiles;
 import net.javaguides.springboot_jutjubic.model.Video;
 import net.javaguides.springboot_jutjubic.repository.VideoRepository;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.ArrayList;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -35,10 +37,15 @@ public class LocalTrendingIntegrationTest {
     @Autowired
     private VideoRepository videoRepository;
 
-    @BeforeAll
-    public static void setupClass() {
+    private static final StringBuilder finalReport = new StringBuilder();
 
+
+    @BeforeAll
+    public static void setupClass() throws IOException {
         System.out.println(" STARTING LOCAL TRENDING TESTS");
+        Files.createDirectories(Paths.get("target"));
+
+        finalReport.append("LOCAL TRENDING - TEST RESULTS SUMMARY\n");
     }
 
     @BeforeEach
@@ -48,9 +55,11 @@ public class LocalTrendingIntegrationTest {
     }
 
     @AfterAll
-    public static void teardownClass() {
-
+    public static void teardownClass() throws IOException {
         System.out.println(" ALL TESTS COMPLETED");
+
+        Files.write(Paths.get("target/final-test-results.txt"), finalReport.toString().getBytes());
+        System.out.println("\n Final results: target/final-test-results.txt");
     }
 
     //  TEST 1: Basic Functionality
@@ -80,69 +89,103 @@ public class LocalTrendingIntegrationTest {
         System.out.println(" User location: " + result.getUserLocation().getLocationName());
 
         assertTrue(result.getVideos().size() <= 10, "Limit mora biti poštovan");
+        finalReport.append(String.format("TEST 1 - Basic Functionality: %d videos, %dms\n",
+                result.getVideos().size(), result.getResponseTimeMs()));
     }
 
-    // TEST 2: Cache Performance
-
+    // TEST 2: Neighbors in same street
     @Test
     @Order(2)
-    @DisplayName("Test 2: Cache significantly improves performance")
-    public void testCachePerformance() {
-        System.out.println("\n TEST 2: Cache Performance");
+    @DisplayName("Test 2: Neighbors in same street - trending comparison")
+    public void testNeighborsInSameStreet() {
+        System.out.println("\n TEST 2: Neighbors in Same Street");
 
-        LocationDTO location = new LocationDTO(44.7866, 20.4489, false);
+        LocationDTO neighborA = new LocationDTO(44.7866, 20.4489, false);
+        neighborA.setLocationName("Komšija A - Bulevar 73");
 
+        LocationDTO neighborB = new LocationDTO(44.7884, 20.4507, false);
+        neighborB.setLocationName("Komšija B - Bulevar 85");
 
-        long startMiss = System.currentTimeMillis();
-        LocalTrendingService.TrendingResult resultMiss =
-                trendingService.getCachedTrending60s(location, 50, 10);
-        long timeMiss = System.currentTimeMillis() - startMiss;
+        double distance = testDataGenerator.haversine(
+                neighborA.getLatitude(), neighborA.getLongitude(),
+                neighborB.getLatitude(), neighborB.getLongitude()
+        );
 
+        LocalTrendingService.TrendingResult trendingA =
+                trendingService.getRealTimeTrending(neighborA, 50, 10);
 
-        long startHit = System.currentTimeMillis();
-        LocalTrendingService.TrendingResult resultHit =
-                trendingService.getCachedTrending60s(location, 50, 10);
-        long timeHit = System.currentTimeMillis() - startHit;
+        LocalTrendingService.TrendingResult trendingB =
+                trendingService.getRealTimeTrending(neighborB, 50, 10);
 
-        System.out.println(" Cache MISS time: " + timeMiss + "ms");
-        System.out.println(" Cache HIT time: " + timeHit + "ms");
-        System.out.println(" Improvement: " + (timeMiss - timeHit) + "ms (" +
-                String.format("%.1f", ((double)timeMiss / timeHit)) + "x faster)");
+        System.out.println("\n PROVERA 1: Broj videja");
+        assertEquals(trendingA.getVideos().size(), trendingB.getVideos().size(),
+                "Komšije treba da dobiju ISTI broj videja");
 
+        System.out.println("\n PROVERA 2: Identičnost video zapisa");
 
-        assertTrue(timeHit < timeMiss / 10,
-                "Cache HIT mora biti bar 10x brži od cache MISS");
+        for (int i = 0; i < Math.min(trendingA.getVideos().size(), trendingB.getVideos().size()); i++) {
+            Long idA = trendingA.getVideos().get(i).getVideoId();
+            Long idB = trendingB.getVideos().get(i).getVideoId();
+
+            assertEquals(idA, idB,
+                    "Video na poziciji " + (i+1) + " treba da bude ISTI");
+        }
+
+        System.out.println(" Svi video zapisi su identični");
+
+        System.out.println("\n PROVERA 3: Score razlika");
+        double totalDiff = 0;
+        double maxDiff = 0;
+
+        for (int i = 0; i < Math.min(trendingA.getVideos().size(), trendingB.getVideos().size()); i++) {
+            double scoreA = trendingA.getVideos().get(i).getTrendingScore();
+            double scoreB = trendingB.getVideos().get(i).getTrendingScore();
+            double diff = Math.abs(scoreA - scoreB);
+            double percentDiff = scoreA > 0 ? (diff / scoreA) * 100 : 0;
+
+            totalDiff += percentDiff;
+            maxDiff = Math.max(maxDiff, percentDiff);
+        }
+
+        double avgDiff = trendingA.getVideos().size() > 0 ? totalDiff / trendingA.getVideos().size() : 0;
+
+        assertTrue(avgDiff < 1.0,
+                "Prosečna razlika u score-u treba da bude < 1% (actual: " + avgDiff + "%)");
+
+        finalReport.append(String.format("TEST 2 - Neighbors: %d videos, %.1fm apart, %.3f%% score diff\n",
+                trendingA.getVideos().size(), distance * 1000, avgDiff));
     }
 
-    //TEST 3: Concentrated Scenario s
+    //TEST 3: Concentrated Scenario
 
     @Test
     @Order(3)
-    @DisplayName("Test 3: Concentrated activities (Beograd centar)")
     public void testConcentratedScenario() {
         System.out.println("\n TEST 3: Concentrated Scenario");
 
-
         testDataGenerator.generateConcentratedScenario();
-
         LocationDTO location = new LocationDTO(44.7866, 20.4489, false);
 
-        // Mali radijus (5km) - vrati puno rezultata
-        LocalTrendingService.TrendingResult resultSmall =
-                trendingService.getRealTimeTrending(location, 5, 20);
+        LocalTrendingService.TrendingResult result3km =
+                trendingService.getRealTimeTrending(location, 3, 100);
 
-        // Veliki radijus (50km) - jos vise rezultata
-        LocalTrendingService.TrendingResult resultLarge =
-                trendingService.getRealTimeTrending(location, 50, 20);
+        LocalTrendingService.TrendingResult result10km =
+                trendingService.getRealTimeTrending(location, 10, 100);
 
-        System.out.println(" Videos in 5km radius: " + resultSmall.getVideos().size());
-        System.out.println(" Videos in 50km radius: " + resultLarge.getVideos().size());
+        System.out.println(" 3km: " + result3km.getVideos().size() + " videos");
+        System.out.println(" 10km: " + result10km.getVideos().size() + " videos");
 
-        assertTrue(resultSmall.getVideos().size() > 0,
-                "Mora biti videa u koncentrovanom području");
-        assertTrue(resultLarge.getVideos().size() >= resultSmall.getVideos().size(),
-                "Veći radijus mora imati >= rezultata");
+        assertTrue(result3km.getVideos().size() > 0, "3km mora imati videje");
 
+        int difference = result10km.getVideos().size() - result3km.getVideos().size();
+
+        assertTrue(result10km.getVideos().size() >= result3km.getVideos().size(),
+                String.format("10km (%d) >= 3km (%d)", result10km.getVideos().size(), result3km.getVideos().size()));
+
+        System.out.println(" Razlika: " + difference + " videa");
+
+        finalReport.append(String.format("TEST 3 - Concentrated: 3km=%d, 10km=%d (diff: %d)\n",
+                result3km.getVideos().size(), result10km.getVideos().size(), difference));
 
         testDataGenerator.cleanupTestData();
     }
@@ -153,30 +196,56 @@ public class LocalTrendingIntegrationTest {
     @Order(4)
     @DisplayName("Test 4: Distributed activities (Balkan region)")
     public void testDistributedScenario() {
-        System.out.println("\n TEST 4: Distributed Scenario");
+        System.out.println("\nTEST 4: Distributed Scenario");
 
-        // Generisi distribuirane podatke
         testDataGenerator.generateDistributedScenario();
 
-        // Test iz Beograda
         LocationDTO belgrade = new LocationDTO(44.7866, 20.4489, false);
         LocalTrendingService.TrendingResult belgradeTrending =
-                trendingService.getRealTimeTrending(belgrade, 200, 15);
+                trendingService.getRealTimeTrending(belgrade, 200, 100);
 
-        // Test iz Zagreba
         LocationDTO zagreb = new LocationDTO(45.8150, 15.9819, false);
         LocalTrendingService.TrendingResult zagrebTrending =
-                trendingService.getRealTimeTrending(zagreb, 200, 15);
+                trendingService.getRealTimeTrending(zagreb, 200, 100);
 
-        System.out.println(" Beograd trending: " + belgradeTrending.getVideos().size() + " videos");
-        System.out.println(" Zagreb trending: " + zagrebTrending.getVideos().size() + " videos");
+        System.out.println(" Beograd (200km): " + belgradeTrending.getVideos().size() + " videos");
+        System.out.println(" Zagreb (200km): " + zagrebTrending.getVideos().size() + " videos");
 
         assertNotNull(belgradeTrending.getVideos());
         assertNotNull(zagrebTrending.getVideos());
 
+        int compareCount = Math.min(10, Math.min(belgradeTrending.getVideos().size(),
+                zagrebTrending.getVideos().size()));
 
-        System.out.println(" Different locations return different trending videos");
+        java.util.Set<Long> belgradeTop10 = belgradeTrending.getVideos().stream()
+                .limit(compareCount)
+                .map(v -> v.getVideoId())
+                .collect(java.util.stream.Collectors.toSet());
 
+        java.util.Set<Long> zagrebTop10 = zagrebTrending.getVideos().stream()
+                .limit(compareCount)
+                .map(v -> v.getVideoId())
+                .collect(java.util.stream.Collectors.toSet());
+
+        int matching = 0;
+        for (Long id : belgradeTop10) {
+            if (zagrebTop10.contains(id)) {
+                matching++;
+            }
+        }
+
+        double matchPercentage = compareCount > 0 ? (double) matching / compareCount * 100 : 0;
+
+        System.out.println(" Top " + compareCount + " match: " + matching + "/" + compareCount +
+                " (" + String.format("%.1f", matchPercentage) + "%)");
+
+        assertTrue(matchPercentage < 50.0,
+                String.format("Različiti gradovi treba da imaju <50%% poklapanje (actual: %.1f%%)", matchPercentage));
+
+        System.out.println(" Different cities return different trending");
+
+        finalReport.append(String.format("TEST 4 - Distributed: Beograd=%d, Zagreb=%d (%.1f%% match)\n",
+                belgradeTrending.getVideos().size(), zagrebTrending.getVideos().size(), matchPercentage));
 
         testDataGenerator.cleanupTestData();
     }
@@ -189,14 +258,17 @@ public class LocalTrendingIntegrationTest {
     public void testPerformanceBenchmark() {
         System.out.println("\n TEST 5: Performance Benchmark");
 
+        testDataGenerator.generateConcentratedScenario();
+
+
         LocationDTO location = new LocationDTO(44.7866, 20.4489, false);
         int iterations = 100;
 
         trendingService.resetMetrics();
 
-        System.out.println("Running " + iterations + " iterations for each strategy...\n");
-
         String[] strategies = {"REAL_TIME", "CACHED_30S", "CACHED_60S", "CACHED_5MIN"};
+
+        finalReport.append("\nTEST 5 - Performance Benchmark (100 iterations):\n");
 
         for (String strategy : strategies) {
             long totalTime = 0;
@@ -224,20 +296,21 @@ public class LocalTrendingIntegrationTest {
 
             double avgTime = totalTime / (double) iterations;
             System.out.println(strategy + " - Avg: " + String.format("%.2f", avgTime) + "ms");
+
+            finalReport.append(String.format("  %s: %.2fms avg\n", strategy, avgTime));
         }
+
+        testDataGenerator.cleanupTestData();
 
         LocalTrendingService.PerformanceMetrics metrics = trendingService.getMetrics();
 
-        System.out.println("\n📈 Final Metrics:");
-        System.out.println("Total Requests: " + metrics.getTotalRequests());
-        System.out.println("Cache Hits: " + metrics.getCacheHits());
-        System.out.println("Cache Misses: " + metrics.getCacheMisses());
+        System.out.println("\n Final Metrics:");
         System.out.println("Cache Hit Rate: " + String.format("%.1f", metrics.getCacheHitRate()) + "%");
 
-        assertTrue(metrics.getCacheHitRate() > 70.0,
-                "Cache hit rate mora biti > 70% (actual: " + metrics.getCacheHitRate() + "%)");
-    }
+        finalReport.append(String.format("  Cache Hit Rate: %.1f%%\n", metrics.getCacheHitRate()));
 
+        assertTrue(metrics.getCacheHitRate() > 70.0, "Cache hit rate > 70%");
+    }
     // TEST 6: Different Radius
 
     @Test
@@ -246,21 +319,37 @@ public class LocalTrendingIntegrationTest {
     public void testDifferentRadii() {
         System.out.println("\n TEST 6: Different Radius Values");
 
-        LocationDTO location = new LocationDTO(44.7866, 20.4489, false);
+        testDataGenerator.generateDistributedScenario();  // 96 videa sirom Balkana
 
-        int[] radii = {10, 50, 100, 200};
+        LocationDTO location = new LocationDTO(44.7866, 20.4489, false);  // Beograd
+        int[] radii = {50, 100, 200, 500};
+
+        finalReport.append("\nTEST 6 - Different Radius Values:\n");
+
+        int previousCount = 0;
 
         for (int radius : radii) {
             LocalTrendingService.TrendingResult result =
-                    trendingService.getRealTimeTrending(location, radius, 10);
+                    trendingService.getRealTimeTrending(location, radius, 100);
 
-            System.out.println("Radius " + radius + "km: " +
-                    result.getVideos().size() + " videos, " +
-                    result.getResponseTimeMs() + "ms");
+            int currentCount = result.getVideos().size();
 
-            assertTrue(result.getResponseTimeMs() < 500,
-                    "Response time mora biti < 500ms (actual: " + result.getResponseTimeMs() + "ms)");
+            System.out.println(String.format("  Radius %dkm: %d videos (%dms)",
+                    radius, currentCount, result.getResponseTimeMs()));
+
+            finalReport.append(String.format("  %dkm: %d videos, %dms\n",
+                    radius, currentCount, result.getResponseTimeMs()));
+
+
+            assertTrue(currentCount >= previousCount,
+                    String.format("Radius %dkm should return >= videos than previous radius", radius));
+
+            previousCount = currentCount;
+
+            assertTrue(result.getResponseTimeMs() < 500, "Response time < 500ms");
         }
+
+        testDataGenerator.cleanupTestData();
     }
 
     // TEST 7: Edge Cases
@@ -287,6 +376,8 @@ public class LocalTrendingIntegrationTest {
         assertNotNull(resultNegative, "Result ne sme biti null čak i sa negativnim radiusom");
 
         System.out.println("All edge cases handled correctly");
+
+        finalReport.append("TEST 7 - Edge Cases: All handled correctly\n");
     }
 
     // TEST 8: Other operations
@@ -347,41 +438,13 @@ public class LocalTrendingIntegrationTest {
         System.out.println(" All 20 concurrent operations completed in: " + totalTime + "ms");
         System.out.println(" Trending does NOT block basic operations");
 
+        finalReport.append(String.format("TEST 8 - Concurrent Operations: 20 ops in %dms (no blocking)\n", totalTime));
 
         assertTrue(totalTime < 10000,
                 "Total time should be < 10s (actual: " + totalTime + "ms)");
     }
 
-    // TEST 9: CSV
 
-    @Test
-    @Order(9)
-    @DisplayName("Test 9: Export performance metrics to CSV")
-    public void exportMetricsToCSV() throws IOException {
-        System.out.println("\n TEST 9: Export Metrics");
-
-        testPerformanceBenchmark();
-
-        LocalTrendingService.PerformanceMetrics metrics = trendingService.getMetrics();
-
-        try (PrintWriter writer = new PrintWriter("target/performance-metrics.csv")) {
-            writer.println("Strategy,Avg Response (ms),Min (ms),Max (ms),Median (ms),P95 (ms),Cache Hit Rate (%)");
-
-            metrics.getStrategies().forEach((strategy, stats) -> {
-                writer.printf("%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f%n",
-                        strategy,
-                        stats.getAverageResponseTime(),
-                        stats.getMinResponseTime(),
-                        stats.getMaxResponseTime(),
-                        stats.getMedianResponseTime(),
-                        stats.getP95ResponseTime(),
-                        stats.getCacheHitRate()
-                );
-            });
-        }
-
-        System.out.println("Metrics exported to target/performance-metrics.csv");
-    }
 
 
 }

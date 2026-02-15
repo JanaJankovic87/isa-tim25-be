@@ -7,7 +7,6 @@
     import net.javaguides.springboot_jutjubic.service.VideoService;
     import net.javaguides.springboot_jutjubic.service.UploadEventPublisher;
     import net.javaguides.springboot_jutjubic.messages.UploadEventDto;
-    import net.javaguides.springboot_jutjubic.messages.UploadEventProto.UploadEvent;
     import org.slf4j.Logger;
     import org.slf4j.LoggerFactory;
     import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +23,7 @@
     import net.javaguides.springboot_jutjubic.repository.VideoViewRepository;
     import net.javaguides.springboot_jutjubic.model.Comment;
     import net.javaguides.springboot_jutjubic.repository.CommentRepository;
+    import net.javaguides.springboot_jutjubic.messages.UploadEventProto;
 
     import java.io.IOException;
     import java.nio.file.Files;
@@ -478,15 +478,15 @@
             System.out.println("✅ JSON POSLAT - Title: " + eventDto.getTitle());
 
             // 2. Slanje PROTO poruke
-            UploadEvent protoEvent = mapToProto(eventDto);
+            UploadEventProto.UploadEvent protoEvent = mapToProto(eventDto);
             uploadEventPublisher.publishProtobuf(protoEvent);
             System.out.println("✅ PROTO POSLAT - Title: " + protoEvent.getTitle());
 
             logger.info("✅ Published video upload event to RabbitMQ (JSON + PROTO): {}", video.getTitle());
         }
 
-        private UploadEvent mapToProto(UploadEventDto dto) {
-            return UploadEvent.newBuilder()
+        private UploadEventProto.UploadEvent mapToProto(UploadEventDto dto) {
+            return UploadEventProto.UploadEvent.newBuilder()
                     .setVideoId(dto.getVideoId())
                     .setTitle(dto.getTitle())
                     .setFileSize(dto.getFileSize())
