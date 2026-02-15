@@ -15,6 +15,7 @@ public class VideoDTO {
     private LocalDateTime scheduledTime;
     private Boolean isScheduled;
     private Long videoDurationSeconds;
+    private String status; // "REGULAR", "SCHEDULED", "LIVE", "ENDED"
 
     // Geolocation fields (NOVO za S2)
     private String location;
@@ -242,6 +243,15 @@ public class VideoDTO {
                 ", scheduledTime=" + scheduledTime +
                 ", isScheduled=" + isScheduled +
                 ", videoDurationSeconds=" + videoDurationSeconds +
+                ", status=" + status +
                 '}';
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

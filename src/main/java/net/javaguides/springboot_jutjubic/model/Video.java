@@ -82,6 +82,13 @@ public class Video implements Serializable {
     @Column(name = "video_duration_seconds")
     private Long videoDurationSeconds; // trajanje videa u sekundama
 
+    public enum VideoStatus {
+        REGULAR,      // Običan video (nije scheduled)
+        SCHEDULED,    // Zakazan, ali još nije počeo
+        LIVE,         // Trenutno se emituje (stream je aktivan)
+        ENDED         // Stream je završen
+    }
+
     @OneToMany(mappedBy = "video", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> comments = new ArrayList<>();
 

@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import net.javaguides.springboot_jutjubic.dto.LocationDTO;
 import net.javaguides.springboot_jutjubic.dto.TrendingVideoDTO;
+import net.javaguides.springboot_jutjubic.dto.VideoPlaybackState;
 import net.javaguides.springboot_jutjubic.service.impl.GeolocationService;
+import net.javaguides.springboot_jutjubic.service.impl.ScheduledVideoService;
 import net.javaguides.springboot_jutjubic.service.impl.TranscodingProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,11 +53,16 @@ public class VideoController {
     @Autowired
     private TranscodingProducer transcodingProducer;
 
+    @Autowired
+    private ScheduledVideoService scheduledVideoService;
+
     @Value("${app.transcoding.output-dir:uploads/transcoded}")
     private String transcodedOutputDir;
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
+            .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -156,6 +163,13 @@ public class VideoController {
                     dto.getTags(), currentUser.getId());
             video.setLocation(dto.getLocation());
 
+            if (dto.getScheduledTime() != null) {
+                video.setScheduledTime(dto.getScheduledTime());
+                video.setIsScheduled(true);
+            } else {
+                video.setIsScheduled(false);
+            }
+
             logger.info("Pokušavam da sačuvam video: {}", video.getTitle());
 
             Video savedVideo = videoService.save(video, thumbnail, videoFile);
@@ -226,13 +240,24 @@ public class VideoController {
 
 
     @GetMapping(value = "/{id}/video")
-    public ResponseEntity<Resource> getVideoFile(
+    public ResponseEntity<?> getVideoFile(
             @PathVariable Long id,
             @RequestHeader(value = "Range", required = false) String rangeHeader) {
         try {
             Video video = videoService.findById(id);
             if (video == null) {
                 return ResponseEntity.notFound().build();
+            }
+
+            if (!scheduledVideoService.isVideoAvailable(video)) {
+                Map<String, Object> errorResponse = new LinkedHashMap<>();
+                errorResponse.put("error", "Video nije dostupan");
+                errorResponse.put("scheduledTime", video.getScheduledTime());
+                errorResponse.put("message", "Video je zakazan za: " + video.getScheduledTime());
+
+                return ResponseEntity
+                        .status(HttpStatus.FORBIDDEN)
+                        .body(errorResponse);
             }
 
             Path videoPath = Paths.get(video.getVideoPath());
@@ -476,5 +501,59 @@ public class VideoController {
                 : "PENDING");
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * Dobijanje playback stanja za scheduled video
+     */
+    @GetMapping("/{id}/playback-state")
+    public ResponseEntity<?> getPlaybackState(@PathVariable Long id) {
+        try {
+            Video video = videoService.findById(id);
+
+            if (video == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Proveri da li je video dostupan
+            if (!scheduledVideoService.isVideoAvailable(video)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("Video nije dostupan. Zakazan je za: " + video.getScheduledTime());
+            }
+
+            VideoPlaybackState state = scheduledVideoService.getPlaybackState(id);
+            return ResponseEntity.ok(state);
+
+        } catch (Exception e) {
+            logger.error("Greška pri dobavljanju playback state-a", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Provera da li je video dostupan za gledanje
+     */
+    @GetMapping("/{id}/availability")
+    public ResponseEntity<?> checkAvailability(@PathVariable Long id) {
+        Video video = videoService.findById(id);
+
+        if (video == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        boolean isAvailable = scheduledVideoService.isVideoAvailable(video);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("isAvailable", isAvailable);
+        response.put("isScheduled", video.getIsScheduled());
+        response.put("scheduledTime", video.getScheduledTime());
+
+        if (!isAvailable) {
+            response.put("message", "Video će biti dostupan " + video.getScheduledTime());
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+
 
 }
