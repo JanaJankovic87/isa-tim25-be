@@ -32,7 +32,7 @@ public class WatchPartyService {
     public WatchPartyRoomDTO createRoom(Long ownerId, String ownerUsername) {
         WatchPartyRoom room = new WatchPartyRoom(ownerId, ownerUsername);
         WatchPartyRoom saved = roomRepository.save(room);
-        logger.info("Room created: roomId={}, owner={}", saved.getRoomId(), ownerUsername);
+        logger.info("Room created in DB: roomId={}, owner={}", saved.getRoomId(), ownerUsername);
         return toDTO(saved);
     }
 
@@ -51,20 +51,26 @@ public class WatchPartyService {
 
     @Transactional
     public void startVideo(String roomId, Long videoId, Long requesterId, String requesterUsername) {
+        logger.info("START VIDEO called: roomId={}, videoId={}, requesterId={}", roomId, videoId, requesterId);
+
         WatchPartyRoom room = roomRepository.findByRoomIdAndActiveTrue(roomId)
                 .orElseThrow(() -> new RuntimeException("Room not found: " + roomId));
 
         if (!room.getOwnerId().equals(requesterId)) {
+            logger.error(" Permission denied: user {} is not owner of room {}", requesterId, roomId);
             throw new RuntimeException("Only the room owner can start a video");
         }
 
         room.setCurrentVideoId(videoId);
         roomRepository.save(room);
+        logger.info("Video ID saved to DB: roomId={}, videoId={}", roomId, videoId);
 
         WatchPartyEventDTO event = WatchPartyEventDTO.redirectVideo(roomId, videoId, requesterUsername);
+
+        logger.info("Publishing redirect_video to Redis: {}", event);
         redisPublisher.publish(event);
 
-        logger.info("Video started: room={}, videoId={}", roomId, videoId);
+        logger.info(" Video start complete: roomId={}, videoId={}", roomId, videoId);
     }
 
     @Transactional
@@ -88,6 +94,7 @@ public class WatchPartyService {
     public void notifyUserJoined(String roomId, String username) {
         WatchPartyEventDTO event = WatchPartyEventDTO.userJoined(roomId, username);
         messagingTemplate.convertAndSend("/topic/watch-party/" + roomId, event);
+        logger.info("User joined notification sent: room={}, user={}", roomId, username);
     }
 
     private WatchPartyRoomDTO toDTO(WatchPartyRoom room) {

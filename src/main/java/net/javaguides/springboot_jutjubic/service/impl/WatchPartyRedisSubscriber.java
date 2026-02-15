@@ -25,14 +25,21 @@ public class WatchPartyRedisSubscriber implements MessageListener {
     public void onMessage(Message message, byte[] pattern) {
         try {
             String body = new String(message.getBody());
+            logger.info(" Received from Redis: {}", body);
+
             WatchPartyEventDTO event = objectMapper.readValue(body, WatchPartyEventDTO.class);
+            logger.info(" Parsed event: type={}, roomId={}, videoId={}",
+                    event.getEventType(), event.getRoomId(), event.getVideoId());
 
             String destination = "/topic/watch-party/" + event.getRoomId();
+
+            logger.info(" Forwarding to WebSocket destination: {}", destination);
             messagingTemplate.convertAndSend(destination, event);
 
-            logger.info("Forwarded {} to WebSocket {}", event.getEventType(), destination);
+            logger.info(" Successfully forwarded {} to {}", event.getEventType(), destination);
+
         } catch (Exception e) {
-            logger.error("Failed to process Redis message: {}", e.getMessage(), e);
+            logger.error(" Failed to process Redis message: {}", e.getMessage(), e);
         }
     }
 }

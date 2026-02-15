@@ -23,10 +23,17 @@ public class WatchPartyRedisPublisher {
     public void publish(WatchPartyEventDTO event) {
         try {
             String message = objectMapper.writeValueAsString(event);
-            redisTemplate.convertAndSend(RedisConfig.WATCH_PARTY_CHANNEL, message);
-            logger.info("Published to Redis: roomId={}, type={}", event.getRoomId(), event.getEventType());
+
+            logger.info(" Publishing to Redis channel '{}': {}", RedisConfig.WATCH_PARTY_CHANNEL, message);
+
+            Long subscribers = redisTemplate.convertAndSend(RedisConfig.WATCH_PARTY_CHANNEL, message);
+
+            logger.info(" Redis publish successful: {} subscribers received the message", subscribers);
+            logger.info("   Event details: roomId={}, type={}, videoId={}",
+                    event.getRoomId(), event.getEventType(), event.getVideoId());
+
         } catch (Exception e) {
-            logger.error("Failed to publish to Redis: {}", e.getMessage(), e);
+            logger.error(" Failed to publish to Redis: {}", e.getMessage(), e);
         }
     }
 }
