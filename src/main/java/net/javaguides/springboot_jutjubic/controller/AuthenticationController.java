@@ -135,6 +135,48 @@ public class AuthenticationController {
         }
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletRequest request) {
+
+        try {
+            String token = tokenUtils.getToken(request);
+
+            if (token != null) {
+                String username = tokenUtils.getUsernameFromToken(token);
+
+                if (username != null) {
+                    activeUsersMetrics.recordUserLogout(username);
+
+                    SecurityContextHolder.clearContext();
+
+                    Map<String, String> response = new HashMap<>();
+                    response.put("message", "Successfully logged out");
+                    response.put("username", username);
+
+                    return ResponseEntity.ok(response);
+                }
+            }
+
+            // Ako nema tokena ili username-a, i dalje vrati success
+            SecurityContextHolder.clearContext();
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Logged out");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+
+            // I u slučaju greške očisti context
+            SecurityContextHolder.clearContext();
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Logged out");
+
+            return ResponseEntity.ok(response);
+        }
+    }
+
     @PostMapping("/login/{deviceType}")
     public ResponseEntity<?> createAuthenticationTokenForDevice(
             @RequestBody JwtAuthenticationRequest authenticationRequest,

@@ -81,12 +81,25 @@ public class ActiveUsersMetricsService {
     }
 
     public void recordUserLogout(String userId) {
-        activeUsers.remove(userId);
-        monitoringRedis.opsForHash().delete(ACTIVE_USERS_KEY, userId);
+
+        // Proveri da li korisnik postoji u memory
+        boolean existsInMemory = activeUsers.containsKey(userId);
+
+        // Ukloni iz memorije
+        LocalDateTime removedTime = activeUsers.remove(userId);
+        System.out.println("    Removed from memory: " + (removedTime != null ? "YES (was active at " + removedTime + ")" : "NO (not found)"));
+
+        // Ukloni iz Redis-a
+        try {
+            Long deletedCount = monitoringRedis.opsForHash().delete(ACTIVE_USERS_KEY, userId);
+        } catch (Exception e) {
+            System.err.println("Error removing from Redis: " + e.getMessage());
+        }
+
     }
 
     public int getActiveUsersCount() {
-        // PRVO: Očisti neaktivne korisnike
+        // Očisti neaktivne korisnike
         removeInactiveUsers();
 
         // Kombinuj broj iz memorije i Redis-a
