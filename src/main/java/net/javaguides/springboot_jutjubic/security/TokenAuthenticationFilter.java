@@ -6,8 +6,10 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import net.javaguides.springboot_jutjubic.metrics.ActiveUsersMetricsService;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -19,12 +21,14 @@ import net.javaguides.springboot_jutjubic.util.TokenUtils;
 public class TokenAuthenticationFilter extends OncePerRequestFilter {
     private TokenUtils tokenUtils;
     private UserDetailsService userDetailsService;
+    private ActiveUsersMetricsService activeUsersMetrics;
 
     protected final Log LOGGER = LogFactory.getLog(getClass());
 
-    public TokenAuthenticationFilter(TokenUtils tokenHelper, UserDetailsService userDetailsService) {
+    public TokenAuthenticationFilter(TokenUtils tokenHelper, UserDetailsService userDetailsService, ActiveUsersMetricsService activeUsersMetrics) {
         this.tokenUtils = tokenHelper;
         this.userDetailsService = userDetailsService;
+        this.activeUsersMetrics = activeUsersMetrics;
     }
 
     @Override
@@ -47,6 +51,11 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
                                 new TokenBasedAuthentication(userDetails);
                         authentication.setToken(authToken);
                         SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                        // prati aktivne korisnike
+                        if (activeUsersMetrics != null) {
+                            activeUsersMetrics.recordUserLogin(username);
+                        }
                     }
                 }
             }

@@ -54,7 +54,7 @@ public class WebSecurityConfig {
     private TokenUtils tokenUtils;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, TokenAuthenticationFilter tokenAuthenticationFilter) throws Exception {
         http.sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
         );
@@ -68,6 +68,8 @@ public class WebSecurityConfig {
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/api/test/**").permitAll()
                 .requestMatchers("/api/popularity/**").permitAll()
+                .requestMatchers("/actuator/**").permitAll()
+                .requestMatchers("/actuator/prometheus").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/videos/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users/*/profile").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/videos/*/comments").authenticated()
@@ -85,7 +87,7 @@ public class WebSecurityConfig {
         http.csrf(csrf -> csrf.disable());
 
         http.addFilterBefore(
-                new TokenAuthenticationFilter(tokenUtils, userDetailsService()),
+                tokenAuthenticationFilter,
                 BasicAuthenticationFilter.class
         );
 
