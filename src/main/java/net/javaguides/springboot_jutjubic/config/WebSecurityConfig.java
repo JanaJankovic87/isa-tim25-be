@@ -77,6 +77,11 @@ public class WebSecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/videos/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/trending/**").permitAll()
                 .requestMatchers("/api/test/**").permitAll()
+<<<<<<< Updated upstream
+=======
+                .requestMatchers("/ws/**").permitAll()
+                .requestMatchers("/auth/login").permitAll()
+>>>>>>> Stashed changes
                 .anyRequest().authenticated()
         );
 
