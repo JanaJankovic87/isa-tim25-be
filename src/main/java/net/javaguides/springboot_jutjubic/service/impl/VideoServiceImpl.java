@@ -52,6 +52,9 @@
         @Autowired
         private CommentRepository commentRepository;
 
+        @Autowired
+        private TranscodingProducer transcodingProducer;
+
         @Autowired(required = false)
         private UploadEventPublisher uploadEventPublisher;
 
@@ -60,8 +63,8 @@
 
         private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-        private static final long MAX_VIDEO_SIZE = 200 * 1024 * 1024; // 200MB
-        private static final long UPLOAD_TIMEOUT_MS = 30000; // 30 sekundi
+        private static final long MAX_VIDEO_SIZE = 200 * 1024 * 1024;
+        private static final long UPLOAD_TIMEOUT_MS = 30000;
 
         @Override
         @Transactional(rollbackFor = Exception.class)
@@ -77,14 +80,11 @@
             try {
                 logger.info("Početak kreiranja video objave: {}", video.getTitle());
 
-                // 1. Validacija fajlova
                 validateFiles(thumbnail, videoFile);
 
-                // 2. Kreiranje temp direktorijuma
                 Path tempDir = Paths.get(uploadDir, "temp");
                 Files.createDirectories(tempDir);
 
-                // 3. Upload u temp sa timeout-om
                 ExecutorService executor = Executors.newSingleThreadExecutor();
                 Future<Path[]> uploadFuture = executor.submit(() -> {
                     Path tempThumb = tempDir.resolve("thumb_" + System.currentTimeMillis() + ".jpg");
@@ -110,11 +110,9 @@
 
                 logger.info("Fajlovi uspešno uploadovani u temp folder");
 
-                // 4. Čuvanje u bazi (dobijanje ID-a)
                 Video savedVideo = videoRepository.save(video);
                 logger.info("Video sačuvan u bazi sa ID: {}", savedVideo.getId());
 
-                // 5. Premeštanje u finalne direktorijume
                 Path thumbnailsDir = Paths.get(uploadDir, "thumbnails");
                 Path videosDir = Paths.get(uploadDir, "videos");
                 Files.createDirectories(thumbnailsDir);
@@ -128,7 +126,6 @@
 
                 logger.info("Fajlovi premešteni u finalne direktorijume");
 
-                // 6. Update putanja u bazi
                 savedVideo.setThumbnailPath(finalThumbnailPath.toString());
                 savedVideo.setVideoPath(finalVideoPath.toString());
 
@@ -138,20 +135,25 @@
                     logger.info("Trajanje videa: {} sekundi", duration);
                 } catch (Exception e) {
                     logger.warn("Nije moguće izračunati trajanje videa", e);
-                    savedVideo.setVideoDurationSeconds(0L); // Default
+                    savedVideo.setVideoDurationSeconds(0L);
                 }
 
                 savedVideo = videoRepository.save(savedVideo);
 
-                logger.info("Video objava uspešno kreirana: {}", savedVideo);
+                try {
+                    String absoluteVideoPath = finalVideoPath.toAbsolutePath().toString();
+                    transcodingProducer.sendTranscodingRequest(savedVideo.getId(), absoluteVideoPath);
+                    logger.info("Transcoding request sent for videoId={}", savedVideo.getId());
+                } catch (Exception e) {
+                    logger.error(" Failed to send transcoding request", e);
 
-                // ===== PUBLISH TO RABBITMQ =====
+                }
+
                 if (uploadEventPublisher != null) {
                     try {
                         publishVideoUploadEvent(savedVideo);
                     } catch (Exception e) {
                         logger.error("Failed to publish upload event to RabbitMQ", e);
-                        // Ne bacaj exception - video je već sačuvan
                     }
                 } else {
                     logger.warn("UploadEventPublisher is not available - skipping RabbitMQ publish");
@@ -162,7 +164,6 @@
             } catch (Exception e) {
                 logger.error("Greška pri kreiranju objave, rollback...", e);
 
-                // Cleanup svih fajlova
                 deleteFileIfExists(tempThumbnailPath);
                 deleteFileIfExists(tempVideoPath);
                 deleteFileIfExists(finalThumbnailPath);
@@ -345,23 +346,19 @@
         @Transactional
         public void recordView(Long videoId, Long userId, LocationDTO location) {
             try {
-                // 1. Pronađi video
                 Video video = videoRepository.findById(videoId)
                         .orElseThrow(() -> new RuntimeException("Video sa ID " + videoId + " nije pronađen"));
 
-                // 2. Proveri da li je korisnik AUTOR videa
                 if (video.getUserId().equals(userId)) {
                     logger.info("Korisnik {} je AUTOR videa {} - view se NE registruje", userId, videoId);
                     return;
                 }
 
-                // 3. Proveri da li je korisnik VEĆ GLEDAO ovaj video
                 if (videoViewRepository.existsByUserIdAndVideoId(userId, videoId)) {
                     logger.info("Korisnik {} je VEĆ gledao video {} - view se NE registruje", userId, videoId);
                     return;
                 }
 
-                // 4. Sačuvaj zapis da je korisnik pogledao video
                 VideoView view = new VideoView(userId, videoId);
 
                 if (location != null) {
@@ -461,7 +458,6 @@
             eventDto.setVideoId(video.getId().toString());
             eventDto.setTitle(video.getTitle());
 
-            // File size - calculate from video file if possible
             try {
                 Path videoPath = Paths.get(video.getVideoPath());
                 if (Files.exists(videoPath)) {
@@ -480,23 +476,20 @@
             eventDto.setVideoUrl(video.getVideoPath() != null ? video.getVideoPath() : "");
             eventDto.setTimestamp(System.currentTimeMillis());
 
-            // Tags - convert Set<String> to List<String> if video has tags
             if (video.getTags() != null) {
                 eventDto.setTags(new ArrayList<>(video.getTags()));
             } else {
                 eventDto.setTags(new ArrayList<>());
             }
 
-            // 1. Slanje JSON poruke
             uploadEventPublisher.publishJson(eventDto);
-            System.out.println("✅ JSON POSLAT - Title: " + eventDto.getTitle());
+            System.out.println(" JSON POSLAT - Title: " + eventDto.getTitle());
 
-            // 2. Slanje PROTO poruke
             UploadEventProto.UploadEvent protoEvent = mapToProto(eventDto);
             uploadEventPublisher.publishProtobuf(protoEvent);
-            System.out.println("✅ PROTO POSLAT - Title: " + protoEvent.getTitle());
+            System.out.println(" PROTO POSLAT - Title: " + protoEvent.getTitle());
 
-            logger.info("✅ Published video upload event to RabbitMQ (JSON + PROTO): {}", video.getTitle());
+            logger.info(" Published video upload event to RabbitMQ (JSON + PROTO): {}", video.getTitle());
         }
 
         private UploadEventProto.UploadEvent mapToProto(UploadEventDto dto) {
@@ -517,7 +510,7 @@
             try {
                 MultimediaObject multimediaObject = new MultimediaObject(videoPath.toFile());
                 MultimediaInfo info = multimediaObject.getInfo();
-                return info.getDuration() / 1000; // Convert milliseconds to seconds
+                return info.getDuration() / 1000;
             } catch (Exception e) {
                 logger.error("Greška pri čitanju trajanja videa", e);
                 throw e;
