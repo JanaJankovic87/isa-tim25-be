@@ -64,13 +64,18 @@ public class WebSecurityConfig {
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(
+            HttpSecurity http,
+            TokenAuthenticationFilter tokenAuthenticationFilter
+    ) throws Exception {
+
         http.sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
         );
@@ -82,6 +87,8 @@ public class WebSecurityConfig {
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/api/test/**").permitAll()
                 .requestMatchers("/api/popularity/**").permitAll()
+                .requestMatchers("/actuator/**").permitAll()
+                .requestMatchers("/actuator/prometheus").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/videos/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users/*/profile").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/videos/*/comments").authenticated()
@@ -90,14 +97,12 @@ public class WebSecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/videos/*/view").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/videos/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/trending/**").permitAll()
-                .requestMatchers("/api/test/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/watch-party/rooms").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/watch-party/rooms/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/watch-party/rooms").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/watch-party/rooms/*/start").authenticated()
                 .requestMatchers(HttpMethod.DELETE, "/api/watch-party/rooms/**").authenticated()
                 .requestMatchers("/ws/**").permitAll()
-                .requestMatchers("/auth/login").permitAll()
                 .anyRequest().authenticated()
         );
 
@@ -105,7 +110,7 @@ public class WebSecurityConfig {
         http.csrf(csrf -> csrf.disable());
 
         http.addFilterBefore(
-                new TokenAuthenticationFilter(tokenUtils, userDetailsService()),
+                tokenAuthenticationFilter,
                 BasicAuthenticationFilter.class
         );
 
