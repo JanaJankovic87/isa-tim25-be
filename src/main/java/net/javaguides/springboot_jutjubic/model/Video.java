@@ -73,6 +73,22 @@ public class Video implements Serializable {
     @Version
     private Integer version;
 
+    @Column(name = "scheduled_time")
+    private LocalDateTime scheduledTime;
+
+    @Column(name = "is_scheduled")
+    private Boolean isScheduled = false;
+
+    @Column(name = "video_duration_seconds")
+    private Long videoDurationSeconds; // trajanje videa u sekundama
+
+    public enum VideoStatus {
+        REGULAR,      // Običan video (nije scheduled)
+        SCHEDULED,    // Zakazan, ali još nije počeo
+        LIVE,         // Trenutno se emituje (stream je aktivan)
+        ENDED         // Stream je završen
+    }
+
     @OneToMany(mappedBy = "video", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> comments = new ArrayList<>();
 
@@ -231,5 +247,29 @@ public class Video implements Serializable {
         return "Video [id=" + id + ", title=" + title + ", userId=" + userId +
                 ", createdAt=" + createdAt + ", latitude=" + latitude +
                 ", longitude=" + longitude + ", version=" + version + "]";
+    }
+
+    public LocalDateTime getScheduledTime() {
+        return scheduledTime;
+    }
+
+    public void setScheduledTime(LocalDateTime scheduledTime) {
+        this.scheduledTime = scheduledTime;
+    }
+
+    public Boolean getIsScheduled() {
+        return isScheduled;
+    }
+
+    public void setIsScheduled(Boolean isScheduled) {
+        this.isScheduled = isScheduled;
+    }
+
+    public Long getVideoDurationSeconds() {
+        return videoDurationSeconds;
+    }
+
+    public void setVideoDurationSeconds(Long videoDurationSeconds) {
+        this.videoDurationSeconds = videoDurationSeconds;
     }
 }

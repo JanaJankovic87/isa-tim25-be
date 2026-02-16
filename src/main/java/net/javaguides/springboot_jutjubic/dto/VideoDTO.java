@@ -12,6 +12,10 @@ public class VideoDTO {
     private String thumbnailPath;
     private String videoPath;
     private LocalDateTime createdAt;
+    private LocalDateTime scheduledTime;
+    private Boolean isScheduled;
+    private Long videoDurationSeconds;
+    private String status; // "REGULAR", "SCHEDULED", "LIVE", "ENDED"
 
     // Geolocation fields (NOVO za S2)
     private String location;
@@ -195,6 +199,30 @@ public class VideoDTO {
         this.version = version;
     }
 
+    public LocalDateTime getScheduledTime() {
+        return scheduledTime;
+    }
+
+    public void setScheduledTime(LocalDateTime scheduledTime) {
+        this.scheduledTime = scheduledTime;
+    }
+
+    public Boolean getIsScheduled() {
+        return isScheduled;
+    }
+
+    public void setIsScheduled(Boolean isScheduled) {
+        this.isScheduled = isScheduled;
+    }
+
+    public Long getVideoDurationSeconds() {
+        return videoDurationSeconds;
+    }
+
+    public void setVideoDurationSeconds(Long videoDurationSeconds) {
+        this.videoDurationSeconds = videoDurationSeconds;
+    }
+
     @Override
     public String toString() {
         return "VideoDTO{" +
@@ -212,6 +240,18 @@ public class VideoDTO {
                 ", likeCount=" + likeCount +
                 ", commentCount=" + commentCount +
                 ", createdAt=" + createdAt +
+                ", scheduledTime=" + scheduledTime +
+                ", isScheduled=" + isScheduled +
+                ", videoDurationSeconds=" + videoDurationSeconds +
+                ", status=" + status +
                 '}';
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }
