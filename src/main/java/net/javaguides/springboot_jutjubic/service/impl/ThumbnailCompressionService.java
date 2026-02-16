@@ -114,6 +114,12 @@ public class ThumbnailCompressionService {
             long compressedSize = Files.size(compressedPath);
             double reduction = 100.0 * (originalSize - compressedSize) / originalSize;
 
+            if (compressedSize >= originalSize) {
+                logger.info("Video ID={}: slika vec optimizovana, zadrzavam original", video.getId());
+                deleteFileIfExists(compressedPath);
+                return false;
+            }
+
             logger.info("Video ID={}: {} → {} ({}% manji)",
                     video.getId(), formatSize(originalSize),
                     formatSize(compressedSize), String.format("%.1f", reduction));
