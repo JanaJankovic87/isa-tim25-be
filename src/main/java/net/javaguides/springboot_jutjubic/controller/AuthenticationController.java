@@ -3,6 +3,7 @@ package net.javaguides.springboot_jutjubic.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import net.javaguides.springboot_jutjubic.metrics.ActiveUsersMetricsService;
 import net.javaguides.springboot_jutjubic.service.EmailService;
 import net.javaguides.springboot_jutjubic.service.LoginAttemptService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +49,9 @@ public class AuthenticationController {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private ActiveUsersMetricsService activeUsersMetrics;
+
     @PostMapping("/login")
     public ResponseEntity<?> createAuthenticationToken(
             @RequestBody JwtAuthenticationRequest authenticationRequest,
@@ -79,6 +83,9 @@ public class AuthenticationController {
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
             User user = (User) authentication.getPrincipal();
+
+            // Track login za monitoring metrike
+            activeUsersMetrics.recordUserLogin(user.getEmail());
 
             String deviceType = detectDeviceTypeFromRequest(request);
             String jwt = tokenUtils.generateTokenForDevice(user.getEmail(), deviceType, user);
@@ -162,6 +169,9 @@ public class AuthenticationController {
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
             User user = (User) authentication.getPrincipal();
+
+            // Track login za monitoring metrike
+            activeUsersMetrics.recordUserLogin(user.getEmail());
 
             String resolvedDeviceType = deviceType;
             if (resolvedDeviceType == null || resolvedDeviceType.isEmpty() || "unknown".equals(resolvedDeviceType)) {
@@ -282,7 +292,6 @@ public class AuthenticationController {
                 "mobile".equals(deviceType) ||
                 "tablet".equals(deviceType);
     }
-
 
     @PostMapping("/refresh")
     public ResponseEntity<?> refreshAuthenticationToken(HttpServletRequest request) {
