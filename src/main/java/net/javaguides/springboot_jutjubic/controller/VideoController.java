@@ -599,9 +599,7 @@ public class VideoController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Dobijanje playback stanja za scheduled video
-     */
+    // dobavlja trenutno stanje reprodukcije videa (koliko sekundi je prošlo od početka streama)
     @GetMapping("/{id}/playback-state")
     public ResponseEntity<?> getPlaybackState(@PathVariable Long id) {
         try {
@@ -626,9 +624,7 @@ public class VideoController {
         }
     }
 
-    /**
-     * Provera da li je video dostupan za gledanje
-     */
+    // proverava da li je video dostupan za gledanje (ako je zakazan, proverava da li je prošlo zakazano vreme)
     @GetMapping("/{id}/availability")
     public ResponseEntity<?> checkAvailability(@PathVariable Long id) {
         Video video = videoService.findById(id);
@@ -650,7 +646,4 @@ public class VideoController {
 
         return ResponseEntity.ok(response);
     }
-
-
-
 }
