@@ -197,15 +197,17 @@
         @Override
         @Cacheable(value = "thumbnails", key = "#id")
         public byte[] getThumbnail(Long id) throws IOException {
-            logger.info("Učitavanje thumbnail-a sa disk-a za post: {}", id);
-            Video video = videoRepository.findById(id).orElse(null);
+            Video video = videoRepository.findById(id).orElseThrow();
 
-            if (video == null || video.getThumbnailPath() == null) {
-                throw new IOException("Thumbnail nije pronađen");
+            if (Boolean.TRUE.equals(video.isThumbnailCompressed())
+                    && video.getCompressedThumbnailPath() != null) {
+                Path compressedPath = Paths.get(video.getCompressedThumbnailPath());
+                if (Files.exists(compressedPath)) {
+                    return Files.readAllBytes(compressedPath);
+                }
             }
 
-            Path thumbnailPath = Paths.get(video.getThumbnailPath());
-            return Files.readAllBytes(thumbnailPath);
+            return Files.readAllBytes(Paths.get(video.getThumbnailPath()));
         }
 
         @Override

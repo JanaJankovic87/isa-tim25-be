@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import net.javaguides.springboot_jutjubic.dto.LocationDTO;
 import net.javaguides.springboot_jutjubic.dto.TrendingVideoDTO;
 import net.javaguides.springboot_jutjubic.service.impl.GeolocationService;
+import net.javaguides.springboot_jutjubic.service.impl.ThumbnailCompressionService;
 import net.javaguides.springboot_jutjubic.service.impl.TranscodingProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +51,9 @@ public class VideoController {
 
     @Autowired
     private TranscodingProducer transcodingProducer;
+
+    @Autowired
+    private ThumbnailCompressionService thumbnailCompressionService;
 
     @Value("${app.transcoding.output-dir:uploads/transcoded}")
     private String transcodedOutputDir;
@@ -213,13 +217,21 @@ public class VideoController {
     @GetMapping(value = "/{id}/thumbnail", produces = MediaType.IMAGE_JPEG_VALUE)
     public ResponseEntity<byte[]> getThumbnail(@PathVariable Long id) {
         try {
+
+            Video video = videoService.findById(id);
+            if (video != null && video.isThumbnailCompressed()) {
+                logger.info("Video ID={}: serviram kompresovanu sliku", id);
+            } else {
+                logger.info("Video ID={}: serviram originalnu sliku", id);
+            }
+
             logger.info("Dobavljanje thumbnail-a za video ID: {}", id);
             byte[] thumbnail = videoService.getThumbnail(id);
             return ResponseEntity.ok()
                     .contentType(MediaType.IMAGE_JPEG)
                     .body(thumbnail);
         } catch (IOException e) {
-            logger.error("Greška pri učitavanju thumbnail-a za ID: {}", id, e);
+            logger.error("Greska pri učitavanju thumbnail-a za ID: {}", id, e);
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
@@ -475,6 +487,12 @@ public class VideoController {
                 ? video.getTranscodingStatus().name()
                 : "PENDING");
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/test/compress-thumbnails")
+    public ResponseEntity<?> testCompression() {
+        int count = thumbnailCompressionService.compressOldThumbnails();
+        return ResponseEntity.ok("Kompresovano: " + count + " slika");
     }
 
 }
