@@ -123,8 +123,18 @@ public class TranscodingConsumer {
                 message.getVideoId(), preset, outputFile);
 
         try {
-            File source = new File(message.getVideoPath());
-            File target = new File(outputFile);
+            File source = Paths.get(message.getVideoPath()).toAbsolutePath().toFile();
+            File target = Paths.get(outputFile).toAbsolutePath().toFile();
+
+            target.getParentFile().mkdirs();
+
+            if (!source.exists()) {
+                logger.error("Consumer Source file does NOT exist: {}", source.getAbsolutePath());
+                return false;
+            }
+
+            logger.info("Consumer Source absolute path: {}", source.getAbsolutePath());
+            logger.info("Consumer Target absolute path: {}", target.getAbsolutePath());
 
             AudioAttributes audio = new AudioAttributes();
             audio.setCodec("aac");
@@ -137,25 +147,21 @@ public class TranscodingConsumer {
             video.setBitRate(config.videoBitrate);
             video.setSize(new VideoSize(config.width, config.height));
             video.setFrameRate(30);
-
             video.setPixelFormat("yuv420p");
-
-
 
             EncodingAttributes attrs = new EncodingAttributes();
             attrs.setOutputFormat("mp4");
             attrs.setAudioAttributes(audio);
             attrs.setVideoAttributes(video);
 
-
             Encoder encoder = new Encoder();
             encoder.encode(new MultimediaObject(source), target, attrs);
 
-            logger.info("[Consumer] Preset={} done for videoId={}", preset, message.getVideoId());
+            logger.info("Consumer Preset={} done for videoId={}", preset, message.getVideoId());
             return true;
 
         } catch (Exception e) {
-            logger.error("[Consumer] Error transcoding preset={}: {}", preset, e.getMessage(), e);
+            logger.error("Consumer Error transcoding preset={}: {}", preset, e.getMessage(), e);
             return false;
         }
     }
