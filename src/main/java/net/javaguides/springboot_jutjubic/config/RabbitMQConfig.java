@@ -37,7 +37,7 @@ public class RabbitMQConfig {
         return template;
     }
 
-    // RabbitTemplate za Protobuf - БЕЗ convertera
+
     @Bean(name = "performanceProtobufRabbitTemplate")
     public RabbitTemplate performanceProtobufRabbitTemplate(ConnectionFactory connectionFactory) {
         return new RabbitTemplate(connectionFactory);
