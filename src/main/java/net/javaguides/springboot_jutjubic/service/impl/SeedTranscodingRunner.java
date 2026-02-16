@@ -34,16 +34,16 @@ public class SeedTranscodingRunner {
 
         for (Video video : allVideos) {
             if (video.getTranscodingStatus() == Video.TranscodingStatus.COMPLETED) {
-                logger.info("Video ID={} već COMPLETED, preskačem", video.getId());
+                logger.info("Video ID={} already complited, skipping", video.getId());
                 continue;
             }
 
-            Path p720 = Paths.get("uploads/transcoded/" + video.getId() + "/720p.mp4");
-            Path p480 = Paths.get("uploads/transcoded/" + video.getId() + "/480p.mp4");
+            Path p720 = Paths.get("uploads/transcoded/" + video.getId() + "/720p.mp4").toAbsolutePath();
+            Path p480 = Paths.get("uploads/transcoded/" + video.getId() + "/480p.mp4").toAbsolutePath();
             if (Files.exists(p720) && Files.exists(p480)) {
                 video.setTranscodingStatus(Video.TranscodingStatus.COMPLETED);
                 videoRepository.save(video);
-                logger.info("Video ID={} fajlovi postoje, markiram kao COMPLETED", video.getId());
+                logger.info("Video ID={} files exist, marking as complited", video.getId());
                 continue;
             }
 
@@ -52,22 +52,28 @@ public class SeedTranscodingRunner {
                     : video.getVideoPath();
 
             if (pathToUse == null || pathToUse.isEmpty()) {
-                logger.warn("Video ID={} nema path, preskačem", video.getId());
+                logger.warn("Video ID={} has no path, skipping", video.getId());
                 continue;
             }
 
-            String normalizedPath = pathToUse.replace("\\", "/");
-            if (!Files.exists(Paths.get(normalizedPath))) {
-                logger.warn("Fajl ne postoji: {} za video ID={}", normalizedPath, video.getId());
+            Path absolutePath = Paths.get(pathToUse.replace("\\", "/")).toAbsolutePath();
+            if (!Files.exists(absolutePath)) {
+                logger.warn("File does not exist: {} for video ID={}", absolutePath, video.getId());
                 continue;
             }
 
+            if (video.getTranscodingStatus() == Video.TranscodingStatus.FAILED
+                    || video.getTranscodingStatus() == Video.TranscodingStatus.PROCESSING) {
+                video.setTranscodingStatus(Video.TranscodingStatus.PENDING);
+                videoRepository.save(video);
+                logger.info("Video ID={} reset from {} to pending", video.getId(), video.getTranscodingStatus());
+            }
 
-            transcodingProducer.sendTranscodingRequest(video.getId(), normalizedPath);
+            transcodingProducer.sendTranscodingRequest(video.getId(), absolutePath.toString());
             count++;
             logger.info("Transcoding request sent for video ID={}", video.getId());
         }
 
-        logger.info("=== Transcoding pokrenut za {} videa ===", count);
+        logger.info("=== Transcoding started for {} videos ===", count);
     }
 }
