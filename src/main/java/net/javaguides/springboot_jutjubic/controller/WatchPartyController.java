@@ -90,11 +90,17 @@ public class WatchPartyController {
             throw new RuntimeException("Not authenticated");
         }
 
-        // Principal is already the User object loaded by UserDetailsService
-        if (auth.getPrincipal() instanceof User) {
-            return (User) auth.getPrincipal();
+        String username = null;
+        if (auth.getPrincipal() instanceof UserDetails) {
+            username = ((UserDetails) auth.getPrincipal()).getUsername();
+        } else if (auth.getPrincipal() instanceof String) {
+            username = (String) auth.getPrincipal();
         }
 
-        throw new RuntimeException("Cannot extract user from authentication");
+        if (username == null) throw new RuntimeException("Cannot determine username");
+
+        User user = userService.findByUsername(username);
+        if (user == null) throw new RuntimeException("User not found");
+        return user;
     }
 }
