@@ -4,24 +4,30 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import net.javaguides.springboot_jutjubic.config.RabbitMQConfig;
 import net.javaguides.springboot_jutjubic.messages.UploadEventDto;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import net.javaguides.springboot_jutjubic.messages.UploadEventProto;
 
 @Service
 public class UploadEventPublisher {
 
-    private final RabbitTemplate rabbitTemplate;
+    private final RabbitTemplate jsonRabbitTemplate;
+    private final RabbitTemplate protobufRabbitTemplate;
     private final ObjectMapper objectMapper;
 
-    public UploadEventPublisher(RabbitTemplate rabbitTemplate, ObjectMapper objectMapper) {
-        this.rabbitTemplate = rabbitTemplate;
+    public UploadEventPublisher(
+            @Qualifier("performanceJsonRabbitTemplate") RabbitTemplate jsonRabbitTemplate,
+            @Qualifier("performanceProtobufRabbitTemplate") RabbitTemplate protobufRabbitTemplate,
+            ObjectMapper objectMapper) {
+        this.jsonRabbitTemplate = jsonRabbitTemplate;
+        this.protobufRabbitTemplate = protobufRabbitTemplate;
         this.objectMapper = objectMapper;
     }
 
     public void publishJson(UploadEventDto eventDto) {
         try {
             String jsonMessage = objectMapper.writeValueAsString(eventDto);
-            rabbitTemplate.convertAndSend(RabbitMQConfig.JSON_QUEUE, jsonMessage);
+            jsonRabbitTemplate.convertAndSend(RabbitMQConfig.JSON_QUEUE, jsonMessage);
             System.out.println("✅ Published JSON: " + eventDto.getTitle());
         } catch (Exception e) {
             System.err.println("❌ Error publishing JSON: " + e.getMessage());
@@ -32,7 +38,7 @@ public class UploadEventPublisher {
     public void publishProtobuf(UploadEventProto.UploadEvent event) {
         try {
             byte[] protobufMessage = event.toByteArray();
-            rabbitTemplate.convertAndSend(RabbitMQConfig.PROTOBUF_QUEUE, protobufMessage);
+            protobufRabbitTemplate.convertAndSend(RabbitMQConfig.PROTOBUF_QUEUE, protobufMessage);
             System.out.println("✅ Published Protobuf: " + event.getTitle());
         } catch (Exception e) {
             System.err.println("❌ Error publishing Protobuf: " + e.getMessage());

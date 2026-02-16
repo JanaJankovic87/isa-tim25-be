@@ -24,6 +24,8 @@
     import net.javaguides.springboot_jutjubic.model.Comment;
     import net.javaguides.springboot_jutjubic.repository.CommentRepository;
     import net.javaguides.springboot_jutjubic.messages.UploadEventProto;
+    import ws.schild.jave.MultimediaObject;
+    import ws.schild.jave.info.MultimediaInfo;
 
     import java.io.IOException;
     import java.nio.file.Files;
@@ -129,6 +131,16 @@
                 // 6. Update putanja u bazi
                 savedVideo.setThumbnailPath(finalThumbnailPath.toString());
                 savedVideo.setVideoPath(finalVideoPath.toString());
+
+                try {
+                    Long duration = getVideoDuration(finalVideoPath);
+                    savedVideo.setVideoDurationSeconds(duration);
+                    logger.info("Trajanje videa: {} sekundi", duration);
+                } catch (Exception e) {
+                    logger.warn("Nije moguće izračunati trajanje videa", e);
+                    savedVideo.setVideoDurationSeconds(0L); // Default
+                }
+
                 savedVideo = videoRepository.save(savedVideo);
 
                 logger.info("Video objava uspešno kreirana: {}", savedVideo);
@@ -500,6 +512,18 @@
                     .addAllTags(dto.getTags())
                     .build();
         }
+
+        private Long getVideoDuration(Path videoPath) throws Exception {
+            try {
+                MultimediaObject multimediaObject = new MultimediaObject(videoPath.toFile());
+                MultimediaInfo info = multimediaObject.getInfo();
+                return info.getDuration() / 1000; // Convert milliseconds to seconds
+            } catch (Exception e) {
+                logger.error("Greška pri čitanju trajanja videa", e);
+                throw e;
+            }
+        }
+
     }
 
 

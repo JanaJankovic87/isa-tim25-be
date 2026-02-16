@@ -35,8 +35,6 @@ INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, ori
 INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, original_video_path, created_at, location, user_id, version, latitude, longitude, is_location_approximated, transcoding_status) VALUES (-6, 'Harry Potter', 'Sorting Hat scene', 'uploads/thumbnails/harry.gif', 'uploads/videos/harry.mp4', 'uploads/videos/harry.mp4', '2025-10-10 12:00:13', 'Edinburgh, Scotland', -5, 0, 55.9533, -3.1883, true, 'PENDING');
 INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, original_video_path, created_at, location, user_id, version, latitude, longitude, is_location_approximated, transcoding_status) VALUES (-7, 'yellow garden', 'cat on a sunny day', 'uploads/thumbnails/cat.gif', 'uploads/videos/cat.mp4', 'uploads/videos/cat.mp4', '2025-09-10 14:00:13', 'Sombor, Serbia', -3, 0, 45.7733, 19.1122, true, 'PENDING');
 INSERT INTO VIDEO_POSTS (id, title, description, thumbnail_path, video_path, original_video_path, created_at, location, user_id, version, latitude, longitude, is_location_approximated, transcoding_status) VALUES (-8, 'Pixar''s Up', 'Carl, an old widower, goes off on an adventure with the help of Russell, a boy scout, in his flying house to search for Paradise Falls, his wife''s dream destination.', 'uploads/thumbnails/up.gif', 'uploads/videos/up.mp4', 'uploads/videos/up.mp4', '2025-06-03 13:15:01', 'Novi Sad, Serbia', -6, 0, 45.2671, 19.8335, true, 'PENDING');
-
-
 INSERT INTO video_post_tags (post_id, tag) VALUES (-1, 'alice');
 INSERT INTO video_post_tags (post_id, tag) VALUES (-1, 'disney');
 INSERT INTO video_post_tags (post_id, tag) VALUES (-2, 'ghibli');

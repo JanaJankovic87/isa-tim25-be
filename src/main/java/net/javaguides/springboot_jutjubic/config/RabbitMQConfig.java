@@ -3,6 +3,8 @@ package net.javaguides.springboot_jutjubic.config;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -22,6 +24,24 @@ public class RabbitMQConfig {
         return new Queue(PROTOBUF_QUEUE, true);
     }
 
+    @Bean
+    public Jackson2JsonMessageConverter rabbitJsonMessageConverter() {
+        return new Jackson2JsonMessageConverter();
+    }
+
+    // RabbitTemplate za JSON - POSEBAN BEAN sa JEDINSTVENIM IMENOM
+    @Bean(name = "performanceJsonRabbitTemplate")
+    public RabbitTemplate performanceJsonRabbitTemplate(ConnectionFactory connectionFactory) {
+        RabbitTemplate template = new RabbitTemplate(connectionFactory);
+        template.setMessageConverter(rabbitJsonMessageConverter());
+        return template;
+    }
+
+    // RabbitTemplate za Protobuf - БЕЗ convertera
+    @Bean(name = "performanceProtobufRabbitTemplate")
+    public RabbitTemplate performanceProtobufRabbitTemplate(ConnectionFactory connectionFactory) {
+        return new RabbitTemplate(connectionFactory);
+    }
 
     @Bean
     public RabbitAdmin rabbitAdmin(ConnectionFactory connectionFactory) {

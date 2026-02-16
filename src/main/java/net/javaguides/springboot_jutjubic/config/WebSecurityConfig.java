@@ -45,9 +45,6 @@ public class WebSecurityConfig {
         return authProvider;
     }
 
-    @Autowired
-    private RestAuthenticationEntryPoint restAuthenticationEntryPoint;
-
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
@@ -62,11 +59,10 @@ public class WebSecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
         );
 
-        http.exceptionHandling(exception ->
-                exception.authenticationEntryPoint(restAuthenticationEntryPoint)
-        );
+
 
         http.authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/error").permitAll()
@@ -81,6 +77,7 @@ public class WebSecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/videos/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/trending/**").permitAll()
                 .requestMatchers("/api/test/**").permitAll()
+                .requestMatchers("/ws/**").permitAll()
                 .anyRequest().authenticated()
         );
 
