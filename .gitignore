@@ -35,5 +35,3 @@ build/
 src/main/resources/application.properties
 cache-example/cache/
 uploads/transcoded/
-uploads/videos/
-uploads/thumbnails/
