@@ -70,6 +70,12 @@ public class Video implements Serializable {
     @Column(name = "user_id")
     private Long userId;
 
+    @Column(name = "thumbnail_compressed")
+    private Boolean thumbnailCompressed = false;
+
+    @Column(name = "compressed_thumbnail_path")
+    private String compressedThumbnailPath;
+
     @Version
     private Integer version;
 
@@ -106,6 +112,21 @@ public class Video implements Serializable {
     }
 
     // Getters and Setters
+    public boolean isThumbnailCompressed() {
+        return Boolean.TRUE.equals(thumbnailCompressed);
+    }
+
+    public void setThumbnailCompressed(boolean thumbnailCompressed) {
+        this.thumbnailCompressed = thumbnailCompressed;
+    }
+
+    public String getCompressedThumbnailPath() {
+        return compressedThumbnailPath;
+    }
+
+    public void setCompressedThumbnailPath(String compressedThumbnailPath) {
+        this.compressedThumbnailPath = compressedThumbnailPath;
+    }
     public Long getId() {
         return id;
     }
