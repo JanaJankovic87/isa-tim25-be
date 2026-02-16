@@ -237,19 +237,16 @@ public class VideoController {
             videoData.put("userId", video.getUserId());
             videoData.put("version", video.getVersion());
 
-            //  Scheduled info - uvek prikaži
             videoData.put("isScheduled", video.getIsScheduled());
             videoData.put("scheduledTime", video.getScheduledTime());
             videoData.put("videoDurationSeconds", video.getVideoDurationSeconds());
             videoData.put("status", status.name());
 
-            // Za LIVE i ENDED videe, dodaj trenutnu sekundu
             if (status == Video.VideoStatus.LIVE || status == Video.VideoStatus.ENDED) {
                 Integer currentSecond = scheduledVideoService.calculateCurrentSecond(video);
                 videoData.put("currentSecond", currentSecond);
             }
 
-            // Za SCHEDULED videe, dodaj koliko sekundi ostaje do početka
             if (status == Video.VideoStatus.SCHEDULED) {
                 LocalDateTime now = LocalDateTime.now();
                 long secondsUntilStart = ChronoUnit.SECONDS.between(now, video.getScheduledTime());
@@ -265,7 +262,6 @@ public class VideoController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    // Helper metoda za formatiranje trajanja
     private String formatDuration(long seconds) {
         if (seconds < 60) {
             return seconds + " sekundi";
@@ -301,24 +297,19 @@ public class VideoController {
         response.put("userId", video.getUserId());
         response.put("version", video.getVersion());
 
-        // Scheduled info
         response.put("isScheduled", video.getIsScheduled());
         response.put("scheduledTime", video.getScheduledTime());
         response.put("videoDurationSeconds", video.getVideoDurationSeconds());
-        response.put("status", status.name()); // "REGULAR", "SCHEDULED", "LIVE", "ENDED"
+        response.put("status", status.name());
 
-        // Ako je LIVE ili ENDED, dodaj i trenutnu sekundu
         if (status == Video.VideoStatus.LIVE || status == Video.VideoStatus.ENDED) {
             Integer currentSecond = scheduledVideoService.calculateCurrentSecond(video);
             response.put("currentSecond", currentSecond);
         }
 
-        // Ako je SCHEDULED (još nije počeo), NE vraćaj video path
         if (status == Video.VideoStatus.SCHEDULED) {
             response.put("message", "Video će biti dostupan: " + video.getScheduledTime());
-            // NE dodaj videoPath
         } else {
-            // Video je dostupan - vraćaj path
             response.put("videoPath", video.getVideoPath());
         }
 
@@ -554,6 +545,7 @@ public class VideoController {
                 return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
             }
 
+
             String transcodedPath = transcodedOutputDir + "/" + id + "/" + preset + ".mp4";
             Path videoPath = Paths.get(transcodedPath);
 
@@ -569,8 +561,18 @@ public class VideoController {
 
 
             Video video = videoService.findById(id);
-            Resource resource = new FileSystemResource(
-                    Paths.get(video.getVideoPath()));
+            if (video == null || video.getVideoPath() == null) {
+                logger.warn("Video ID={} nije pronađen u bazi, ni transcoded fajl za {}", id, preset);
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+
+            Path originalPath = Paths.get(video.getVideoPath());
+            if (!Files.exists(originalPath)) {
+                logger.warn("Video ID={} original fajl ne postoji: {}", id, originalPath);
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+
+            Resource resource = new FileSystemResource(originalPath);
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType("video/mp4"))
                     .header("Accept-Ranges", "bytes")
@@ -578,24 +580,78 @@ public class VideoController {
                     .body(resource);
 
         } catch (Exception e) {
-            logger.error("Greška pri učitavanju video stream-a", e);
+            logger.error("Greška pri učitavanju video stream-a za ID={}, preset={}", id, preset, e);
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
+    @PostMapping("/admin/sync-transcoded")
+    public ResponseEntity<Map<String, Object>> syncTranscodedFiles() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<String> synced = new ArrayList<>();
+        List<String> skipped = new ArrayList<>();
 
+        List<Video> allVideos = videoService.findAll();
 
-    @GetMapping("/{id}/presets")
-    public ResponseEntity<Map<String, Boolean>> getAvailablePresets(@PathVariable Long id) {
-        Map<String, Boolean> presets = new LinkedHashMap<>();
+        for (Video video : allVideos) {
+            Path p720 = Paths.get(transcodedOutputDir + "/" + video.getId() + "/720p.mp4");
+            Path p480 = Paths.get(transcodedOutputDir + "/" + video.getId() + "/480p.mp4");
 
-        String[] qualities = { "720p", "480p"};
-        for (String quality : qualities) {
-            java.nio.file.Path path = Paths.get(transcodedOutputDir + "/" + id + "/" + quality + ".mp4");
-            presets.put(quality, Files.exists(path));
+            boolean filesExist = Files.exists(p720) && Files.exists(p480);
+
+            if (filesExist && video.getTranscodingStatus() != Video.TranscodingStatus.COMPLETED) {
+                video.setTranscodingStatus(Video.TranscodingStatus.COMPLETED);
+                video.setTranscodedDir(transcodedOutputDir + "/" + video.getId());
+                videoService.update(video);
+                synced.add("ID=" + video.getId() + " → COMPLETED");
+            } else if (!filesExist) {
+                skipped.add("ID=" + video.getId() + " → fajlovi ne postoje");
+            }
         }
 
-        return ResponseEntity.ok(presets);
+        result.put("synced", synced);
+        result.put("skipped", skipped);
+        logger.info("Sync završen: {}", result);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/{id}/presets")
+    public ResponseEntity<Map<String, Object>> getAvailablePresets(@PathVariable Long id) {
+        logger.info("🔍 Checking available presets for video ID: {}", id);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        Map<String, Boolean> presets = new LinkedHashMap<>();
+
+        String[] qualities = {"720p", "480p"};
+        boolean allExist = true;
+
+        for (String quality : qualities) {
+            java.nio.file.Path path = Paths.get(transcodedOutputDir + "/" + id + "/" + quality + ".mp4");
+            boolean exists = Files.exists(path);
+            presets.put(quality, exists);
+
+            if (!exists) {
+                allExist = false;
+            }
+
+            logger.info("   - {} : {} (path: {})", quality, exists, path);
+        }
+
+
+        Video video = videoService.findById(id);
+        String status = "PENDING";
+
+        if (video != null && video.getTranscodingStatus() != null) {
+            status = video.getTranscodingStatus().name();
+        }
+
+        logger.info("   - Transcoding status: {}", status);
+        logger.info("   - All files exist: {}", allExist);
+
+        response.put("presets", presets);
+        response.put("transcodingStatus", status);
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}/transcoding-status")
@@ -617,7 +673,6 @@ public class VideoController {
         return ResponseEntity.ok("Kompresovano: " + count + " slika");
     }
 
-    // dobavlja trenutno stanje reprodukcije videa (koliko sekundi je prošlo od početka streama)
     @GetMapping("/{id}/playback-state")
     public ResponseEntity<?> getPlaybackState(@PathVariable Long id) {
         try {
@@ -627,7 +682,6 @@ public class VideoController {
                 return ResponseEntity.notFound().build();
             }
 
-            // Proveri da li je video dostupan
             if (!scheduledVideoService.isVideoAvailable(video)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body("Video nije dostupan. Zakazan je za: " + video.getScheduledTime());
@@ -642,7 +696,6 @@ public class VideoController {
         }
     }
 
-    // proverava da li je video dostupan za gledanje (ako je zakazan, proverava da li je prošlo zakazano vreme)
     @GetMapping("/{id}/availability")
     public ResponseEntity<?> checkAvailability(@PathVariable Long id) {
         Video video = videoService.findById(id);
