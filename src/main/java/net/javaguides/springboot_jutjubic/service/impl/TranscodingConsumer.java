@@ -38,7 +38,6 @@ public class TranscodingConsumer {
             "720p", new VideoConfig(1280, 720, 6000000, 128000),
             "480p", new VideoConfig(854,  480, 600000, 96000)
     );
-
     @RabbitListener(
             queues = TranscodingConfig.TRANSCODING_QUEUE,
             containerFactory = "rabbitListenerContainerFactory",
@@ -49,11 +48,14 @@ public class TranscodingConsumer {
             Channel channel,
             @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {
 
-        logger.info("[Consumer-{}] Received transcoding job for videoId={}",
-                Thread.currentThread().getName(), message.getVideoId());
+        logger.info(" [Consumer-{}] Received job", Thread.currentThread().getName());
+        logger.info("   Video ID: {}", message.getVideoId());
+        logger.info("   Source: {}", message.getVideoPath());
+        logger.info("   Output dir: {}", message.getOutputDir());
 
         try {
             updateTranscodingStatus(message.getVideoId(), Video.TranscodingStatus.PROCESSING);
+
             String outputDir = message.getOutputDir();
             String[] presets = message.getPresets();
             if (presets == null || presets.length == 0) {
@@ -65,52 +67,61 @@ public class TranscodingConsumer {
                 Path presetPath = Paths.get(outputDir + "/" + preset + ".mp4");
                 if (!Files.exists(presetPath)) {
                     alreadyDone = false;
-                    break;
+                    logger.info("   Missing: {}", presetPath);
+                } else {
+                    logger.info("   Exists: {}", presetPath);
                 }
             }
 
             if (alreadyDone) {
-                logger.info("[Consumer] Video ID={} već transkodovan, preskačem duplikat",
-                        message.getVideoId());
+                logger.info("  All files already exist - marking as COMPLETED");
+                updateTranscodingStatus(message.getVideoId(), Video.TranscodingStatus.COMPLETED);
+                updateVideoTranscodedPath(message.getVideoId(), outputDir, "720p");
                 channel.basicAck(deliveryTag, false);
                 return;
             }
 
             Files.createDirectories(Paths.get(outputDir));
+            logger.info("   Output directory ready: {}", outputDir);
 
             boolean allSuccess = true;
-
             for (String preset : presets) {
+                logger.info("   Transcoding to {}...", preset);
                 boolean success = transcodeToPreset(message, preset);
-                if (!success) {
+
+                if (success) {
+                    logger.info("   {} transcoding SUCCESSFUL", preset);
+                } else {
+                    logger.error("   {} transcoding FAILED", preset);
                     allSuccess = false;
-                    logger.warn("[Consumer] Failed preset={} for videoId={}", preset, message.getVideoId());
                 }
             }
 
             if (allSuccess) {
+                logger.info("    ALL presets transcoded successfully");
                 updateVideoTranscodedPath(message.getVideoId(), outputDir, "720p");
-
                 updateTranscodingStatus(message.getVideoId(), Video.TranscodingStatus.COMPLETED);
-                logger.info("[Consumer] Transcoding COMPLETE for videoId={}", message.getVideoId());
             } else {
-
+                logger.error("   Some presets failed - marking as FAILED");
                 updateTranscodingStatus(message.getVideoId(), Video.TranscodingStatus.FAILED);
             }
 
             channel.basicAck(deliveryTag, false);
+            logger.info("   Message acknowledged");
 
         } catch (Exception e) {
-            logger.error("[Consumer] Transcoding FAILED for videoId={}: {}",
+            logger.error(" [Consumer] Transcoding FAILED for videoId={}: {}",
                     message.getVideoId(), e.getMessage(), e);
 
             updateTranscodingStatus(message.getVideoId(), Video.TranscodingStatus.FAILED);
+
             try {
                 channel.basicNack(deliveryTag, false, false);
             } catch (IOException ioEx) {
                 logger.error("Failed to NACK message", ioEx);
             }
         }
+
     }
 
     private boolean transcodeToPreset(TranscodingMessage message, String preset) {
@@ -123,8 +134,18 @@ public class TranscodingConsumer {
                 message.getVideoId(), preset, outputFile);
 
         try {
-            File source = new File(message.getVideoPath());
-            File target = new File(outputFile);
+            File source = Paths.get(message.getVideoPath()).toAbsolutePath().toFile();
+            File target = Paths.get(outputFile).toAbsolutePath().toFile();
+
+            target.getParentFile().mkdirs();
+
+            if (!source.exists()) {
+                logger.error("Consumer Source file does NOT exist: {}", source.getAbsolutePath());
+                return false;
+            }
+
+            logger.info("Consumer Source absolute path: {}", source.getAbsolutePath());
+            logger.info("Consumer Target absolute path: {}", target.getAbsolutePath());
 
             AudioAttributes audio = new AudioAttributes();
             audio.setCodec("aac");
@@ -137,25 +158,21 @@ public class TranscodingConsumer {
             video.setBitRate(config.videoBitrate);
             video.setSize(new VideoSize(config.width, config.height));
             video.setFrameRate(30);
-
             video.setPixelFormat("yuv420p");
-
-
 
             EncodingAttributes attrs = new EncodingAttributes();
             attrs.setOutputFormat("mp4");
             attrs.setAudioAttributes(audio);
             attrs.setVideoAttributes(video);
 
-
             Encoder encoder = new Encoder();
             encoder.encode(new MultimediaObject(source), target, attrs);
 
-            logger.info("[Consumer] Preset={} done for videoId={}", preset, message.getVideoId());
+            logger.info("Consumer Preset={} done for videoId={}", preset, message.getVideoId());
             return true;
 
         } catch (Exception e) {
-            logger.error("[Consumer] Error transcoding preset={}: {}", preset, e.getMessage(), e);
+            logger.error("Consumer Error transcoding preset={}: {}", preset, e.getMessage(), e);
             return false;
         }
     }

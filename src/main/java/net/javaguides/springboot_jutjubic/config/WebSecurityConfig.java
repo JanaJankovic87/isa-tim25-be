@@ -49,9 +49,6 @@ public class WebSecurityConfig {
         return authProvider;
     }
 
-    @Autowired
-    private RestAuthenticationEntryPoint restAuthenticationEntryPoint;
-
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
@@ -66,7 +63,7 @@ public class WebSecurityConfig {
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true);  // ← promeni false u true
+        configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
@@ -78,11 +75,8 @@ public class WebSecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
         );
 
-        http.exceptionHandling(exception ->
-                exception.authenticationEntryPoint(restAuthenticationEntryPoint)
-        );
-
         http.authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/error").permitAll()
@@ -103,6 +97,7 @@ public class WebSecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/watch-party/rooms/*/start").authenticated()
                 .requestMatchers(HttpMethod.DELETE, "/api/watch-party/rooms/**").authenticated()
                 .requestMatchers("/ws/**").permitAll()
+                .requestMatchers("/auth/login").permitAll()
                 .anyRequest().authenticated()
         );
 
