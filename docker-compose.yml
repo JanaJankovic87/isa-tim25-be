@@ -1,4 +1,5 @@
 version: '3.8'
+
 services:
   postgres:
     image: postgres:15
@@ -36,6 +37,15 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: jutjubic-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - jutjubic-network
+    restart: unless-stopped
+
   app-replica-1:
     build: .
     container_name: jutjubic-app-1
@@ -48,12 +58,16 @@ services:
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: guest
       SPRING_RABBITMQ_PASSWORD: guest
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
       INSTANCE_NAME: replica-1
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - jutjubic-network
 
@@ -69,12 +83,16 @@ services:
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: guest
       SPRING_RABBITMQ_PASSWORD: guest
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
       INSTANCE_NAME: replica-2
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - jutjubic-network
 

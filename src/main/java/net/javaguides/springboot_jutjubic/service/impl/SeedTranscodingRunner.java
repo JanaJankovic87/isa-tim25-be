@@ -29,21 +29,47 @@ public class SeedTranscodingRunner {
 
     @EventListener(ApplicationReadyEvent.class)
     public void transcodeExistingVideos() {
+        logger.info(" SEED TRANSCODING RUNNER - STARTED");
+
         List<Video> allVideos = videoRepository.findAll();
-        int count = 0;
+        int alreadyCompleted = 0;
+        int statusUpdated = 0;
+        int sent = 0;
+        int skipped = 0;
+
+        logger.info(" Found {} videos in database", allVideos.size());
 
         for (Video video : allVideos) {
-            if (video.getTranscodingStatus() == Video.TranscodingStatus.COMPLETED) {
-                logger.info("Video ID={} already complited, skipping", video.getId());
-                continue;
-            }
+            logger.info("\nProcessing Video ID: {} ---", video.getId());
+            logger.info("   Title: {}", video.getTitle());
+            logger.info("   Current status: {}", video.getTranscodingStatus());
 
             Path p720 = Paths.get("uploads/transcoded/" + video.getId() + "/720p.mp4").toAbsolutePath();
             Path p480 = Paths.get("uploads/transcoded/" + video.getId() + "/480p.mp4").toAbsolutePath();
-            if (Files.exists(p720) && Files.exists(p480)) {
+
+            boolean exists720 = Files.exists(p720);
+            boolean exists480 = Files.exists(p480);
+            boolean allFilesExist = exists720 && exists480;
+
+            logger.info("   720p exists: {} ({})", exists720, p720);
+            logger.info("   480p exists: {} ({})", exists480, p480);
+
+            if (allFilesExist && video.getTranscodingStatus() == Video.TranscodingStatus.COMPLETED) {
+                logger.info("    Already COMPLETED and all files exist - SKIP");
+                alreadyCompleted++;
+                continue;
+            }
+
+            if (allFilesExist && video.getTranscodingStatus() != Video.TranscodingStatus.COMPLETED) {
+                logger.info("    All files exist but status is {}", video.getTranscodingStatus());
+                logger.info("    Updating status to COMPLETED...");
+
                 video.setTranscodingStatus(Video.TranscodingStatus.COMPLETED);
+                video.setTranscodedDir("uploads/transcoded/" + video.getId());
                 videoRepository.save(video);
-                logger.info("Video ID={} files exist, marking as complited", video.getId());
+
+                logger.info("  Status updated to COMPLETED");
+                statusUpdated++;
                 continue;
             }
 
@@ -52,28 +78,40 @@ public class SeedTranscodingRunner {
                     : video.getVideoPath();
 
             if (pathToUse == null || pathToUse.isEmpty()) {
-                logger.warn("Video ID={} has no path, skipping", video.getId());
+                logger.warn("    No video path found - SKIP");
+                skipped++;
                 continue;
             }
 
             Path absolutePath = Paths.get(pathToUse.replace("\\", "/")).toAbsolutePath();
             if (!Files.exists(absolutePath)) {
-                logger.warn("File does not exist: {} for video ID={}", absolutePath, video.getId());
+                logger.warn("   ️ Source file does not exist: {} - SKIP", absolutePath);
+                skipped++;
                 continue;
             }
 
-            if (video.getTranscodingStatus() == Video.TranscodingStatus.FAILED
-                    || video.getTranscodingStatus() == Video.TranscodingStatus.PROCESSING) {
+            logger.info("    Sending to transcoding queue...");
+            logger.info("   Source: {}", absolutePath);
+
+            if (video.getTranscodingStatus() == Video.TranscodingStatus.FAILED ||
+                    video.getTranscodingStatus() == Video.TranscodingStatus.PROCESSING) {
+                logger.info("  Resetting status from {} to PENDING", video.getTranscodingStatus());
                 video.setTranscodingStatus(Video.TranscodingStatus.PENDING);
                 videoRepository.save(video);
-                logger.info("Video ID={} reset from {} to pending", video.getId(), video.getTranscodingStatus());
             }
 
             transcodingProducer.sendTranscodingRequest(video.getId(), absolutePath.toString());
-            count++;
-            logger.info("Transcoding request sent for video ID={}", video.getId());
+            logger.info("   Transcoding request SENT");
+            sent++;
         }
 
-        logger.info("=== Transcoding started for {} videos ===", count);
+
+        logger.info(" SEED TRANSCODING RUNNER - SUMMARY");
+        logger.info(" Already completed: {}", alreadyCompleted);
+        logger.info(" Status updated: {}", statusUpdated);
+        logger.info(" Sent to queue: {}", sent);
+        logger.info("  Skipped: {}", skipped);
+        logger.info(" Total videos: {}", allVideos.size());
+
     }
 }

@@ -35,14 +35,22 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
 
         String authToken = tokenUtils.getToken(request);
 
+        System.out.println("=== TOKEN FILTER === URL: " + request.getRequestURI());
+        System.out.println("=== TOKEN FILTER === Token: " + authToken);
+
         try {
             if (authToken != null) {
                 String username = tokenUtils.getUsernameFromToken(authToken);
+                System.out.println("=== TOKEN FILTER === Username: " + username);
 
                 if (username != null) {
                     UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                    System.out.println("=== TOKEN FILTER === UserDetails: " + userDetails);
 
-                    if (tokenUtils.validateToken(authToken, userDetails)) {
+                    boolean valid = tokenUtils.validateToken(authToken, userDetails);
+                    System.out.println("=== TOKEN FILTER === Valid: " + valid);
+
+                    if (valid) {
                         TokenBasedAuthentication authentication =
                                 new TokenBasedAuthentication(userDetails);
                         authentication.setToken(authToken);
@@ -54,13 +62,14 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
 
         } catch (ExpiredJwtException e) {
-
+            System.out.println("=== TOKEN FILTER === EXPIRED: " + e.getMessage());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response.getWriter().write("{\"error\":\"JWT_EXPIRED\"}");
 
         } catch (Exception e) {
-
+            System.out.println("=== TOKEN FILTER === EXCEPTION: " + e.getMessage());
+            e.printStackTrace();
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response.getWriter().write("{\"error\":\"INVALID_TOKEN\"}");

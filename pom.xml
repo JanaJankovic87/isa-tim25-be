@@ -137,6 +137,8 @@
 			<artifactId>spring-boot-starter-amqp</artifactId>
 		</dependency>
 
+
+
 		<dependency>
 			<groupId>com.google.protobuf</groupId>
 			<artifactId>protobuf-java</artifactId>
@@ -167,6 +169,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-websocket</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis</artifactId>
 		</dependency>
 
 
@@ -206,6 +213,7 @@
 								<include>src/main/resources/proto</include>
 							</inputDirectories>
 							<outputDirectory>${project.build.directory}/generated-sources/protobuf</outputDirectory>
+							<addSources>true</addSources>
 						</configuration>
 					</execution>
 				</executions>
