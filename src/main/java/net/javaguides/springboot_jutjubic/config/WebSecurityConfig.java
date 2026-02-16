@@ -78,6 +78,8 @@ public class WebSecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/trending/**").permitAll()
                 .requestMatchers("/api/test/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
+                .requestMatchers("/auth/login").permitAll()
+
                 .anyRequest().authenticated()
         );
 
